@@ -1,0 +1,34 @@
+---
+layout: default
+---
+{% assign chars = content | strip_html | strip_newlines | remove: " " | size %}
+{% assign minutes = chars | divided_by: 400 | plus: 1 %}
+<article class="post">
+  <header class="post-header">
+    <p class="post-meta">
+      <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%Y 年 %-m 月 %-d 日" }}</time>
+      <span aria-hidden="true">·</span> 约 {{ minutes }} 分钟读完
+    </p>
+    <h1 class="post-title">{{ page.title }}</h1>
+    {% if page.description %}<p class="post-dek">{{ page.description }}</p>{% endif %}
+  </header>
+
+  <div class="prose">
+    {{ content }}
+  </div>
+
+  {% if page.tags.size > 0 %}
+  <p class="post-tags">
+    {% for tag in page.tags %}<a href="{{ '/archive/' | relative_url }}#tag-{{ tag | slugify }}">#{{ tag }}</a>{% endfor %}
+  </p>
+  {% endif %}
+
+  <nav class="post-nav" aria-label="上一篇和下一篇">
+    {% if page.previous %}
+    <a class="prev" href="{{ page.previous.url | relative_url }}"><span>上一篇</span>{{ page.previous.title }}</a>
+    {% else %}<span></span>{% endif %}
+    {% if page.next %}
+    <a class="next" href="{{ page.next.url | relative_url }}"><span>下一篇</span>{{ page.next.title }}</a>
+    {% endif %}
+  </nav>
+</article>

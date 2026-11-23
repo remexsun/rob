@@ -1,0 +1,32 @@
+---
+layout: page
+title: 归档
+permalink: /archive/
+---
+{% assign years = site.posts | group_by_exp: "p", "p.date | date: '%Y'" %}
+{% for year in years %}
+<h2 class="archive-year">{{ year.name }}</h2>
+<ol class="post-list">
+  {% for post in year.items %}
+  <li>
+    <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%m-%d" }}</time>
+    <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+  </li>
+  {% endfor %}
+</ol>
+{% endfor %}
+
+{% if site.tags.size > 0 %}
+<h2 class="archive-year">按标签</h2>
+{% for tag in site.tags %}
+<h3 class="tag-name" id="tag-{{ tag[0] | slugify }}">#{{ tag[0] }} <span>{{ tag[1].size }}</span></h3>
+<ol class="post-list compact">
+  {% for post in tag[1] %}
+  <li>
+    <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
+    <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+  </li>
+  {% endfor %}
+</ol>
+{% endfor %}
+{% endif %}

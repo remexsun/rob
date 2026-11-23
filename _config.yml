@@ -1,0 +1,46 @@
+# ============================================================
+#  网站基本设置 —— 改这里的文字，整个网站都会跟着变
+# ============================================================
+
+title: Jingjing 的博客
+description: 记下读过的书、做过的事，和慢慢想明白的道理。
+author:
+  name: Jingjing Li
+
+lang: zh-CN
+timezone: Asia/Shanghai
+
+# 发布到 GitHub Pages 后，把下面这行改成你的网址，例如：
+# url: "https://jingjing.github.io"
+url: ""
+baseurl: ""
+
+# 文章网址格式：/2026/11/hello-world/
+permalink: /:year/:month/:title/
+
+# 首页显示多少篇文章
+home_posts: 10
+
+# ============================================================
+#  以下一般不需要改
+# ============================================================
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+
+exclude:
+  - README.md
+  - preview.html

@@ -1,0 +1,31 @@
+---
+layout: default
+---
+<section class="intro">
+  <p class="intro-line">{{ site.description }}</p>
+  <p class="intro-by">{{ site.author.name }} 写于业余时间，{{ site.posts.size }} 篇文章，按时间倒序。</p>
+</section>
+
+{% assign latest = site.posts.first %}
+{% if latest %}
+<section class="latest" aria-label="最新文章">
+  <p class="label">最新</p>
+  <h2 class="latest-title"><a href="{{ latest.url | relative_url }}">{{ latest.title }}</a></h2>
+  <p class="latest-excerpt">{{ latest.description | default: latest.excerpt | strip_html | truncate: 140 }}</p>
+  <p class="latest-meta"><time datetime="{{ latest.date | date_to_xmlschema }}">{{ latest.date | date: "%Y-%m-%d" }}</time></p>
+</section>
+{% endif %}
+
+<section aria-label="更多文章">
+  <ol class="post-list">
+    {% for post in site.posts offset: 1 limit: site.home_posts %}
+    <li>
+      <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
+      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% if site.posts.size > site.home_posts %}
+  <p class="more"><a href="{{ '/archive/' | relative_url }}">查看全部 {{ site.posts.size }} 篇文章</a></p>
+  {% endif %}
+</section>
