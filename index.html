@@ -948,11 +948,46 @@ footer{border-top:1px solid var(--page-line);padding-top:22px;padding-bottom:40p
 
 <script>
 (function(){
+  /* ===== Supabase 配置 ===== */
+  const SUPABASE_URL = 'https://ywznnhdmfuwjrrppaath.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_yZAgyjKqPevXtpOMDgNUQw_sCNDdEkb';
+  const BUCKET = 'rob2';
+
   const PASS = '123123';
   let authenticated = false;
-  // files: [{name, size, dataUrl, type}]
-  const ftpFiles = JSON.parse(localStorage.getItem('ftpFiles') || '[]');
 
+  /* ===== Supabase Storage API helpers ===== */
+  async function sbList(){
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: '', limit: 200, offset: 0, sortBy: { column: 'created_at', order: 'desc' } })
+    });
+    if (!r.ok) throw new Error('列表失败 ' + r.status);
+    return r.json();
+  }
+  async function sbUpload(file){
+    const name = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+      body: file
+    });
+    if (!r.ok) { const t = await r.text(); throw new Error('上传失败 ' + r.status + ': ' + t); }
+    return name;
+  }
+  async function sbDelete(name){
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    if (!r.ok) throw new Error('删除失败 ' + r.status);
+  }
+  function sbPublicUrl(name){
+    return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(name)}`;
+  }
+
+  /* ===== UI ===== */
   window.ftpOpen = function(){
     document.getElementById('ftpOverlay').style.display = 'block';
     const panel = document.getElementById('ftpPanel');
@@ -999,64 +1034,69 @@ footer{border-top:1px solid var(--page-line);padding-top:22px;padding-bottom:40p
     ftpPickFiles(e.dataTransfer.files);
   };
 
-  window.ftpPickFiles = function(files){
-    let done = 0;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = function(ev){
-        ftpFiles.push({ name: file.name, size: file.size, type: file.type, dataUrl: ev.target.result, date: new Date().toLocaleString('zh-CN') });
-        save();
-        done++;
-        if (done === files.length) renderList();
-      };
-      reader.readAsDataURL(file);
-    });
+  window.ftpPickFiles = async function(files){
+    const count = document.getElementById('ftpCount');
+    count.textContent = '上传中…';
+    let ok = 0, fail = 0;
+    for (const file of Array.from(files)){
+      try { await sbUpload(file); ok++; }
+      catch(e){ fail++; console.error(e); }
+    }
+    count.textContent = ok + ' 个上传成功' + (fail ? '，' + fail + ' 个失败' : '');
+    renderList();
   };
 
-  function save(){
-    try { localStorage.setItem('ftpFiles', JSON.stringify(ftpFiles)); } catch(e) {}
-  }
-
   function fmtSize(n){
+    if (!n) return '';
     if (n < 1024) return n + ' B';
     if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
     return (n/1024/1024).toFixed(2) + ' MB';
   }
 
-  function renderList(){
+  async function renderList(){
     const list = document.getElementById('ftpList');
     const count = document.getElementById('ftpCount');
-    if (ftpFiles.length === 0) { count.textContent = '暂无已上传文件'; list.innerHTML = ''; return; }
-    count.textContent = '已上传 ' + ftpFiles.length + ' 个文件';
-    list.innerHTML = ftpFiles.map((f, i) => `
+    list.innerHTML = '<div style="color:#6f7c89;font-size:13px;padding:8px 0;">加载中…</div>';
+    let files;
+    try { files = await sbList(); }
+    catch(e){ list.innerHTML = '<div style="color:#e53935;font-size:13px;">加载失败：' + e.message + '</div>'; return; }
+    if (!files || files.length === 0){ count.textContent = '暂无已上传文件'; list.innerHTML = ''; return; }
+    count.textContent = '已上传 ' + files.length + ' 个文件';
+    list.innerHTML = files.map(f => {
+      const name = f.name;
+      const url = sbPublicUrl(name);
+      const size = fmtSize(f.metadata && f.metadata.size);
+      const date = f.created_at ? new Date(f.created_at).toLocaleString('zh-CN') : '';
+      const displayName = name.replace(/^\d+_/, '');
+      return `
       <div style="display:flex;align-items:center;gap:10px;background:#161e28;border:1px solid #222c38;border-radius:7px;padding:9px 12px;">
-        <span style="font-size:20px;">${fileIcon(f.type)}</span>
+        <span style="font-size:20px;">${fileIcon(f.metadata && f.metadata.mimetype)}</span>
         <div style="flex:1;min-width:0;">
-          <div style="color:#e6edf3;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(f.name)}">${esc(f.name)}</div>
-          <div style="color:#6f7c89;font-size:11px;">${fmtSize(f.size)} · ${f.date}</div>
+          <div style="color:#e6edf3;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(displayName)}">${esc(displayName)}</div>
+          <div style="color:#6f7c89;font-size:11px;">${size}${size && date ? ' · ' : ''}${date}</div>
         </div>
-        <a href="${f.dataUrl}" download="${esc(f.name)}" style="color:#4fd1c5;font-size:12px;text-decoration:none;white-space:nowrap;padding:4px 8px;border:1px solid #2d3f52;border-radius:5px;">下载</a>
-        <button onclick="ftpDelete(${i})" style="background:none;border:1px solid #3d1a1a;color:#e53935;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:12px;">删除</button>
-      </div>
-    `).join('');
+        <a href="${url}" target="_blank" download="${esc(displayName)}" style="color:#4fd1c5;font-size:12px;text-decoration:none;white-space:nowrap;padding:4px 8px;border:1px solid #2d3f52;border-radius:5px;">下载</a>
+        <button onclick="ftpDelete('${esc(name)}')" style="background:none;border:1px solid #3d1a1a;color:#e53935;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:12px;">删除</button>
+      </div>`;
+    }).join('');
   }
 
-  function fileIcon(type){
-    if (!type) return '📄';
-    if (type.startsWith('image/')) return '🖼️';
-    if (type.startsWith('video/')) return '🎬';
-    if (type.startsWith('audio/')) return '🎵';
-    if (type === 'application/pdf') return '📕';
-    if (type.includes('zip') || type.includes('compressed')) return '🗜️';
+  function fileIcon(mime){
+    if (!mime) return '📄';
+    if (mime.startsWith('image/')) return '🖼️';
+    if (mime.startsWith('video/')) return '🎬';
+    if (mime.startsWith('audio/')) return '🎵';
+    if (mime === 'application/pdf') return '📕';
+    if (mime.includes('zip') || mime.includes('compressed')) return '🗜️';
     return '📄';
   }
 
-  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  window.ftpDelete = function(i){
-    ftpFiles.splice(i, 1);
-    save();
-    renderList();
+  window.ftpDelete = async function(name){
+    if (!confirm('确定删除「' + name.replace(/^\d+_/, '') + '」？')) return;
+    try { await sbDelete(name); renderList(); }
+    catch(e){ alert('删除失败：' + e.message); }
   };
 })();
 </script>
