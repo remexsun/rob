@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>视频首尾帧提取器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 560px at 12% -12%, rgba(78,161,255,.20), transparent 62%),
+      radial-gradient(900px 520px at 100% 2%, rgba(124,92,255,.17), transparent 58%),
+      #0b0f17;
+    color: #e8eef8;
+    font: 14px/1.6 "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 1180px; margin: 0 auto; padding: 38px 22px 70px; }
+
+  header { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  h1 { margin: 0; font-size: 27px; letter-spacing: .3px; font-weight: 650; }
+  h1 .hl { background: linear-gradient(92deg, #6fb6ff, #9b7bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { margin: 0; color: #8ea0b8; font-size: 13px; }
+  .tagline b { color: #b9c8dd; font-weight: 500; }
+  .spacer { flex: 1; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px;
+    color: #9fd8b6; background: rgba(53,208,127,.10);
+    border: 1px solid rgba(53,208,127,.28);
+    white-space: nowrap;
+  }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: #35d07f; box-shadow: 0 0 0 3px rgba(53,208,127,.18); }
+
+  .drop {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 40px 24px; text-align: center; cursor: pointer;
+    border: 1.5px dashed #2a3a52; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(18,26,39,.85), rgba(13,19,29,.85));
+    transition: border-color .18s, background .18s, transform .18s;
+  }
+  .drop:hover { border-color: #3d6ea8; background: linear-gradient(180deg, rgba(22,32,48,.95), rgba(15,22,33,.95)); }
+  .drop.over { border-color: #6fb6ff; background: rgba(46,86,132,.24); transform: translateY(-1px); }
+  .drop .ico {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(145deg, rgba(78,161,255,.20), rgba(124,92,255,.18));
+    border: 1px solid rgba(110,160,230,.28); color: #8fc4ff;
+  }
+  .drop .ico svg { width: 23px; height: 23px; }
+  .drop .t1 { font-size: 15px; font-weight: 600; letter-spacing: .2px; }
+  .drop .t2 { font-size: 12.5px; color: #8394ab; }
+  .drop .t2 kbd {
+    font-family: inherit; font-size: 11.5px; padding: 1px 6px; border-radius: 5px;
+    background: #1b2536; border: 1px solid #2b3a51; color: #a9bacf;
+  }
+  #file { display: none; }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 16px; padding: 13px 16px; border-radius: 13px;
+    background: rgba(17,24,36,.82); border: 1px solid #1e2a3c;
+  }
+  .field { display: flex; align-items: center; gap: 8px; }
+  .field[hidden] { display: none; }
+  .field > label { color: #8ea0b8; font-size: 12.5px; white-space: nowrap; }
+  select, input[type="range"] { font: inherit; color: #dce7f5; }
+  select {
+    appearance: none; -webkit-appearance: none;
+    padding: 6px 28px 6px 10px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    background: #131d2c url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%237e93ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 9px center;
+    border: 1px solid #263448; outline: none;
+  }
+  select:focus { border-color: #3d6ea8; }
+  input[type="range"] { width: 96px; accent-color: #4ea1ff; cursor: pointer; }
+  .val { font-variant-numeric: tabular-nums; color: #a9bacf; font-size: 12px; min-width: 34px; }
+  .sep { width: 1px; height: 24px; background: #223046; }
+
+  .btn {
+    font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+    padding: 8px 14px; border-radius: 9px; border: 1px solid #2a3a52;
+    background: #16202f; color: #d5e2f2;
+    transition: .16s border-color, .16s background, .16s transform, .16s color;
+  }
+  .btn:hover:not(:disabled) { border-color: #3d6ea8; background: #1b283a; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary {
+    border-color: transparent; color: #06111f; font-weight: 650;
+    background: linear-gradient(135deg, #7cc0ff, #9b8bff);
+    box-shadow: 0 6px 20px -10px rgba(110,180,255,.9);
+  }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.06); background: linear-gradient(135deg, #7cc0ff, #9b8bff); }
+
+  .stat { margin: 22px 0 10px; color: #7f92aa; font-size: 12.5px; display: flex; align-items: center; gap: 10px; }
+  .stat::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #1e2a3c, transparent); }
+  .list { display: flex; flex-direction: column; gap: 14px; }
+
+  .empty { padding: 46px 20px; text-align: center; color: #6c7d93; font-size: 13px; border: 1px dashed #1e2a3c; border-radius: 14px; }
+
+  .card {
+    border-radius: 15px; overflow: hidden;
+    background: linear-gradient(180deg, rgba(18,26,39,.92), rgba(14,20,30,.92));
+    border: 1px solid #1e2a3c;
+    animation: in .26s ease both;
+  }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card.ok { border-color: #21402f; }
+  .card.err { border-color: #472430; }
+
+  .card-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px 11px; border-bottom: 1px solid #1a2534; }
+  .file-title {
+    font-weight: 600; font-size: 13.5px; color: #dfe9f6;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  }
+  .badge {
+    flex: none; font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid #2a3a52; background: #151f2d; color: #90a3ba; white-space: nowrap;
+  }
+  .badge.work { color: #8fc4ff; border-color: rgba(78,161,255,.35); background: rgba(78,161,255,.10); }
+  .badge.work::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .18; } }
+  .badge.ok { color: #58d99a; border-color: rgba(53,208,127,.32); background: rgba(53,208,127,.10); }
+  .badge.err { color: #ff7b86; border-color: rgba(255,95,109,.32); background: rgba(255,95,109,.10); }
+
+  .file-sub { padding: 8px 16px 0; color: #7d8fa7; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .card-err { padding: 0 16px; color: #ff8b95; font-size: 12.5px; }
+  .card-err:not(:empty) { padding: 8px 16px 0; }
+
+  .frames { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 13px 16px 16px; }
+  @media (max-width: 640px) { .frames { grid-template-columns: 1fr; } }
+
+  .frame { margin: 0; border-radius: 11px; overflow: hidden; border: 1px solid #1f2c3f; background: #0d131d; }
+  .shot {
+    position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden;
+    background-color: #0a1018;
+    background-image:
+      linear-gradient(45deg, #111a26 25%, transparent 25%, transparent 75%, #111a26 75%),
+      linear-gradient(45deg, #111a26 25%, transparent 25%, transparent 75%, #111a26 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 9px 9px;
+  }
+  .shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .shot .ph { color: #43526a; font-size: 12.5px; letter-spacing: 1px; }
+  .frame figcaption { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: #121b27; }
+  .cap-title { font-size: 12.5px; color: #cfdcec; font-weight: 600; flex: none; }
+  .cap-sub { font-size: 11.5px; color: #7f92aa; font-variant-numeric: tabular-nums; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini {
+    flex: none; font: inherit; font-size: 11.5px; cursor: pointer; padding: 4px 10px; border-radius: 7px;
+    border: 1px solid #2a3a52; background: #16202f; color: #b9c9de;
+  }
+  .mini:hover:not(:disabled) { border-color: #3d6ea8; color: #e3eefb; }
+  .mini:disabled { opacity: .38; cursor: not-allowed; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 14px);
+    padding: 10px 18px; border-radius: 10px; font-size: 13px;
+    background: #1b2637; border: 1px solid #2d3f57; color: #dfe9f6;
+    box-shadow: 0 12px 34px -14px rgba(0,0,0,.9);
+    opacity: 0; pointer-events: none; transition: .22s; z-index: 99;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.err { border-color: rgba(255,95,109,.45); color: #ffb3ba; }
+  .toast.ok { border-color: rgba(53,208,127,.45); color: #a8ecc6; }
+
+  footer { margin-top: 34px; color: #5f7188; font-size: 12px; line-height: 1.75; }
+  footer b { color: #8698af; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>视频<span class="hl">首尾帧</span>提取器</h1>
+      <p class="tagline">拖入视频 → 自动抠出 <b>第一帧</b> 与 <b>最后一帧</b> → 保存为图片。支持批量。</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill"><i></i>纯本地处理 · 不上传</span>
+  </header>
+
+  <div id="drop" class="drop" role="button" tabindex="0" aria-label="选择视频文件">
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>
+        <path d="M7 4.5v15M17 4.5v15M2.5 9.5h4.5M2.5 14.5h4.5M17 9.5h4.5M17 14.5h4.5"></path>
+      </svg>
+    </div>
+    <div class="t1">点击选择视频，或把文件拖到这里</div>
+    <div class="t2">也可以直接 <kbd>Ctrl</kbd> + <kbd>V</kbd> 粘贴 · 支持 MP4 / MOV / WebM / MKV 等浏览器可解码的格式</div>
+  </div>
+  <input id="file" type="file" accept="video/*,.mkv,.mov,.m4v" multiple>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="fmt">图片格式</label>
+      <select id="fmt">
+        <option value="png">PNG（无损）</option>
+        <option value="jpeg">JPEG（体积小）</option>
+        <option value="webp">WebP</option>
+      </select>
+    </div>
+    <div class="field" id="qualityWrap" hidden>
+      <label for="quality">画质</label>
+      <input id="quality" type="range" min="60" max="100" step="1" value="92">
+      <span class="val" id="qualityVal">92%</span>
+    </div>
+    <div class="field">
+      <label for="scale">输出尺寸</label>
+      <select id="scale">
+        <option value="1">原始尺寸 100%</option>
+        <option value="0.75">75%</option>
+        <option value="0.5">50%</option>
+        <option value="0.25">25%</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <button class="btn primary" id="zip" type="button" disabled>打包下载 ZIP</button>
+    <button class="btn" id="rerun" type="button" disabled>按当前设置重做</button>
+    <button class="btn" id="clear" type="button" disabled>清空</button>
+  </div>
+
+  <div class="stat" id="stat">等待导入</div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty">还没有视频。<br>首帧取时间轴 0 处画面，尾帧取片尾最后一帧画面。</div>
+
+  <footer>
+    <b>说明：</b>所有解码、截图、打包都在本机浏览器里完成，文件不会离开你的电脑。<br>
+    首帧 = 0 秒处画面；尾帧 = 视频结束前 1 毫秒处画面（即最后一帧）。若某段视频前后本身就是黑场，抠出来的就是黑图，这是源视频内容。<br>
+    MOV / MKV 能否打开取决于浏览器内置解码器（Chrome / Edge 支持最好）。
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var VIDEO_RE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi|ts|flv|3gp)$/i;
+
+  var els = {
+    drop: document.getElementById('drop'),
+    file: document.getElementById('file'),
+    list: document.getElementById('list'),
+    empty: document.getElementById('empty'),
+    fmt: document.getElementById('fmt'),
+    scale: document.getElementById('scale'),
+    quality: document.getElementById('quality'),
+    qualityVal: document.getElementById('qualityVal'),
+    qualityWrap: document.getElementById('qualityWrap'),
+    zip: document.getElementById('zip'),
+    rerun: document.getElementById('rerun'),
+    clear: document.getElementById('clear'),
+    stat: document.getElementById('stat'),
+    toast: document.getElementById('toast')
+  };
+
+  var items = [];
+  var chain = Promise.resolve();
+  var uid = 0;
+
+  /* ---------------- helpers ---------------- */
+
+  function pad(n, l) { l = l || 2; return String(n).padStart(l, '0'); }
+
+  function fmtTime(s) {
+    if (!isFinite(s) || s < 0) return '--:--';
+    var m = Math.floor(s / 60);
+    return pad(m) + ':' + (s - m * 60).toFixed(3).padStart(6, '0');
+  }
+
+  function fmtSize(b) {
+    if (!isFinite(b)) return '—';
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(2) + ' MB';
+  }
+
+  function stamp() {
+    var d = new Date();
+    return '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
+  }
+
+  function safeBase(name) {
+    var s = String(name || 'video').replace(/\.[^.\\/]+$/, '');
+    s = s.replace(/[\\/:*?"<>|\r\n\t]/g, '_').replace(/\s+/g, ' ').trim();
+    if (s.length > 80) s = s.slice(0, 80);
+    return s || 'video';
+  }
+
+  function toast(msg, kind) {
+    els.toast.textContent = msg;
+    els.toast.className = 'toast show' + (kind ? ' ' + kind : '');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { els.toast.className = 'toast'; }, 2600);
+  }
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function readCfg() {
+    var v = els.fmt.value;
+    var mime = v === 'png' ? 'image/png' : (v === 'jpeg' ? 'image/jpeg' : 'image/webp');
+    return {
+      mime: mime,
+      ext: v === 'jpeg' ? 'jpg' : v,
+      quality: Number(els.quality.value) / 100,
+      scale: Number(els.scale.value) || 1
+    };
+  }
+
+  function downloadBlob(blob, name) {
+    var a = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = name;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
+  }
+
+  function fmtLabel(k) { return k === 'first' ? '首帧' : '尾帧'; }
+
+  /* ---------------- video plumbing ---------------- */
+
+  function mediaError(v) {
+    var e = v && v.error;
+    if (!e) return '视频加载失败';
+    var map = {
+      1: '加载被终止（ABORTED）',
+      2: '网络错误（NETWORK）',
+      3: '解码失败（DECODE）—— 浏览器可能不支持该编码',
+      4: '格式不支持（SRC_NOT_SUPPORTED）'
+    };
+    return map[e.code] || ('视频错误 code=' + e.code);
+  }
+
+  function waitEvent(el, name, ms, immediateCheck) {
+    return new Promise(function (resolve, reject) {
+      if (immediateCheck && immediateCheck()) return resolve();
+      var timer = setTimeout(function () {
+        cleanup();
+        reject(new Error('等待视频数据超时'));
+      }, ms || 15000);
+      function cleanup() {
+        clearTimeout(timer);
+        el.removeEventListener(name, ok);
+        el.removeEventListener('error', bad);
+      }
+      function ok() { cleanup(); resolve(); }
+      function bad() { cleanup(); reject(new Error(mediaError(el))); }
+      el.addEventListener(name, ok);
+      el.addEventListener('error', bad);
+    });
+  }
+
+  function forceDuration(v) {
+    // WebM 等容器仅预加载元数据时 duration 可能是 Infinity，seek 到极远处逼它算出真实时长
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(finish, 4000);
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        v.removeEventListener('durationchange', onChange);
+        v.removeEventListener('timeupdate', onChange);
+        resolve();
+      }
+      function onChange() {
+        if (isFinite(v.duration) && v.duration > 0) finish();
+      }
+      v.addEventListener('durationchange', onChange);
+      v.addEventListener('timeupdate', onChange);
+      try { v.currentTime = 1e6; } catch (e) { finish(); }
+    });
+  }
+
+  function seekTo(v, t) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var hard = setTimeout(finish, 12000);
+
+      function finish() {
+        if (settled) return;
+        settled = true;
+        clearTimeout(hard);
+        v.removeEventListener('seeked', onSeeked);
+        v.removeEventListener('error', finish);
+        resolve();
+      }
+
+      function onSeeked() {
+        // seeked 只代表定位完成，画面可能还没合成，再等一帧
+        if (typeof v.requestVideoFrameCallback === 'function') {
+          try {
+            v.requestVideoFrameCallback(function () { finish(); });
+          } catch (e) { /* ignore */ }
+          setTimeout(finish, 400);
+        } else {
+          setTimeout(finish, 90);
+        }
+      }
+
+      v.addEventListener('seeked', onSeeked);
+      v.addEventListener('error', finish);
+      try { v.currentTime = t; } catch (e) { finish(); }
+    });
+  }
+
+  function grab(v, cfg) {
+    return new Promise(function (resolve, reject) {
+      if (!v.videoWidth || !v.videoHeight) return reject(new Error('没有检测到视频画面'));
+      var w = Math.max(1, Math.round(v.videoWidth * cfg.scale));
+      var h = Math.max(1, Math.round(v.videoHeight * cfg.scale));
+
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      try {
+        ctx.drawImage(v, 0, 0, w, h);
+      } catch (e) {
+        return reject(new Error('绘制画面失败：' + e.message));
+      }
+      canvas.toBlob(function (blob) {
+        if (!blob) return reject(new Error('生成图片失败'));
+        resolve({ blob: blob, w: w, h: h });
+      }, cfg.mime, cfg.mime === 'image/png' ? undefined : cfg.quality);
+    });
+  }
+
+  /* ---------------- zip（仅存储，不压缩） ---------------- */
+
+  var CRC_TABLE = null;
+  function crc32(u8) {
+    if (!CRC_TABLE) {
+      CRC_TABLE = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRC_TABLE[n] = c >>> 0;
+      }
+    }
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < u8.length; i++) crc = CRC_TABLE[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function makeZip(files) {
+    var enc = new TextEncoder();
+    var parts = [];
+    var central = [];
+    var offset = 0;
+
+    files.forEach(function (f) {
+      var nameBytes = enc.encode(f.name);
+      var data = f.data;
+      var crc = crc32(data);
+
+      var local = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);   // UTF-8 文件名
+      dv.setUint16(8, 0, true);        // store
+      dv.setUint16(10, 0, true);       // dos time
+      dv.setUint16(12, 0x21, true);    // dos date 1980-01-01
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, data.length, true);
+      dv.setUint32(22, data.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      parts.push(local, data);
+
+      var cen = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cen.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      cen.set(nameBytes, 46);
+      central.push(cen);
+
+      offset += local.length + data.length;
+    });
+
+    var centralSize = central.reduce(function (a, b) { return a + b.length; }, 0);
+    var eocd = new Uint8Array(22);
+    var ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    var out = new Uint8Array(offset + centralSize + 22);
+    var p = 0;
+    parts.forEach(function (part) { out.set(part, p); p += part.length; });
+    central.forEach(function (c) { out.set(c, p); p += c.length; });
+    out.set(eocd, p);
+    return out;
+  }
+
+  /* ---------------- 卡片 UI ---------------- */
+
+  function frameMarkup(key, label) {
+    return '' +
+      '<figure class="frame" data-k="' + key + '">' +
+        '<div class="shot"><span class="ph">' + label + '</span><img alt="' + label + '" hidden></div>' +
+        '<figcaption>' +
+          '<span class="cap-title">' + label + '</span>' +
+          '<span class="cap-sub">—</span>' +
+          '<button class="mini" type="button" disabled>下载</button>' +
+        '</figcaption>' +
+      '</figure>';
+  }
+
+  function createCard(it) {
+    var el = document.createElement('article');
+    el.className = 'card';
+    el.innerHTML = '' +
+      '<div class="card-head">' +
+        '<div class="file-title"></div>' +
+        '<span class="badge">等待中</span>' +
+      '</div>' +
+      '<div class="file-sub">读取中…</div>' +
+      '<div class="frames">' + frameMarkup('first', '首帧') + frameMarkup('last', '尾帧') + '</div>' +
+      '<div class="card-err"></div>';
+
+    var refs = {
+      el: el,
+      title: el.querySelector('.file-title'),
+      badge: el.querySelector('.badge'),
+      sub: el.querySelector('.file-sub'),
+      err: el.querySelector('.card-err'),
+      shots: {}
+    };
+
+    ['first', 'last'].forEach(function (k) {
+      var fig = el.querySelector('.frame[data-k="' + k + '"]');
+      var shot = {
+        fig: fig,
+        img: fig.querySelector('img'),
+        ph: fig.querySelector('.ph'),
+        cap: fig.querySelector('.cap-sub'),
+        btn: fig.querySelector('button'),
+        url: null
+      };
+      shot.btn.addEventListener('click', function () { saveShot(it, k); });
+      refs.shots[k] = shot;
+    });
+
+    refs.title.textContent = it.file.name;
+    refs.title.title = it.file.name;
+    it.refs = refs;
+    return el;
+  }
+
+  function setBadge(it, text, cls) {
+    it.refs.badge.textContent = text;
+    it.refs.badge.className = 'badge' + (cls ? ' ' + cls : '');
+    it.refs.el.className = 'card' + (cls === 'ok' ? ' ok' : cls === 'err' ? ' err' : '');
+  }
+
+  function updateStat() {
+    var done = items.filter(function (i) { return i.state === 'ok'; }).length;
+    var any = items.length > 0;
+    els.empty.hidden = any;
+    els.clear.disabled = !any;
+    els.rerun.disabled = !any;
+    els.zip.disabled = done === 0;
+
+    if (!any) {
+      els.stat.textContent = '等待导入';
+      return;
+    }
+    var txt = '共 ' + items.length + ' 个视频 · 完成 ' + done;
+    if (done < items.length) txt += ' · 处理中 ' + (items.length - done);
+    els.stat.textContent = txt;
+  }
+
+  function setShot(it, key, res, cfg) {
+    var shot = it.refs.shots[key];
+    if (shot.url) URL.revokeObjectURL(shot.url);
+    shot.url = URL.createObjectURL(res.blob);
+    shot.img.src = shot.url;
+    shot.img.hidden = false;
+    shot.ph.hidden = true;
+    shot.cap.textContent = res.w + '×' + res.h + ' · ' + fmtSize(res.blob.size);
+    shot.btn.disabled = false;
+    it.shots[key] = { blob: res.blob, url: shot.url, w: res.w, h: res.h, ext: cfg.ext };
+  }
+
+  function clearShot(it, key) {
+    var shot = it.refs.shots[key];
+    if (shot.url) { URL.revokeObjectURL(shot.url); shot.url = null; }
+    shot.img.removeAttribute('src');
+    shot.img.hidden = true;
+    shot.ph.hidden = false;
+    shot.cap.textContent = '—';
+    shot.btn.disabled = true;
+    it.shots[key] = null;
+  }
+
+  function saveShot(it, key) {
+    var s = it.shots[key];
+    if (!s) return;
+    downloadBlob(s.blob, it.base + '_' + fmtLabel(key) + '.' + s.ext);
+  }
+
+  /* ---------------- 处理流程 ---------------- */
+
+  function processItem(it) {
+    var cfg = readCfg();
+    var url = '';
+    var video = null;
+
+    it.state = 'work';
+    it.error = '';
+    it.refs.err.textContent = '';
+    setBadge(it, '处理中', 'work');
+
+    return Promise.resolve()
+      .then(function () {
+        url = URL.createObjectURL(it.file);
+        video = document.createElement('video');
+        video.preload = 'auto';
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.src = url;
+
+        it.refs.sub.textContent = '读取视频信息…';
+        return waitEvent(video, 'loadedmetadata', 20000, function () { return video.readyState >= 1; });
+      })
+      .then(function () {
+        if (!isFinite(video.duration) || video.duration <= 0) return forceDuration(video);
+        return null;
+      })
+      .then(function () {
+        if (video.readyState < 2) {
+          return waitEvent(video, 'loadeddata', 20000, function () { return video.readyState >= 2; });
+        }
+        return null;
+      })
+      .then(function () {
+        it.duration = isFinite(video.duration) ? video.duration : 0;
+        it.w = video.videoWidth;
+        it.h = video.videoHeight;
+        it.refs.sub.textContent = it.w + '×' + it.h + ' · 时长 ' + fmtTime(it.duration) + ' · ' + fmtSize(it.file.size);
+        if (!it.w || !it.h) throw new Error('没有检测到视频画面（可能是纯音频或解码失败）');
+
+        setBadge(it, '取首帧…', 'work');
+        var tFirst = Math.min(0.001, it.duration / 2);
+        return seekTo(video, tFirst)
+          .then(function () { return grab(video, cfg); })
+          .then(function (res) { setShot(it, 'first', res, cfg); });
+      })
+      .then(function () {
+        setBadge(it, '取尾帧…', 'work');
+        var tLast = Math.max(0.001, it.duration - 0.001);
+        return seekTo(video, tLast)
+          .then(function () { return sleep(20); })
+          .then(function () { return grab(video, cfg); })
+          .then(function (res) { setShot(it, 'last', res, cfg); });
+      })
+      .then(function () {
+        it.state = 'ok';
+        setBadge(it, '完成', 'ok');
+      })
+      .catch(function (err) {
+        it.state = 'err';
+        it.error = (err && err.message) ? err.message : String(err);
+        it.refs.err.textContent = '× ' + it.error;
+        setBadge(it, '失败', 'err');
+      })
+      .then(function () {
+        try {
+          if (video) {
+            video.removeAttribute('src');
+            video.load();
+          }
+        } catch (e) { /* ignore */ }
+        if (url) URL.revokeObjectURL(url);
+        updateStat();
+      });
+  }
+
+  function addFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    var added = 0;
+
+    files.forEach(function (f) {
+      var isVideo = (f.type && f.type.indexOf('video/') === 0) || VIDEO_RE.test(f.name);
+      if (!isVideo) return;
+
+      var it = {
+        id: ++uid,
+        file: f,
+        base: safeBase(f.name),
+        duration: 0,
+        state: 'idle',
+        error: '',
+        shots: { first: null, last: null }
+      };
+      items.push(it);
+      els.list.appendChild(createCard(it));
+      added++;
+    });
+
+    if (!added) {
+      toast('没有识别到视频文件', 'err');
+      return;
+    }
+    updateStat();
+
+    chain = chain.then(function () {
+      var seq = Promise.resolve();
+      items.filter(function (i) { return i.state === 'idle'; }).forEach(function (it) {
+        seq = seq.then(function () {
+          if (it.state !== 'idle') return null;
+          return processItem(it);
+        });
+      });
+      return seq;
+    });
+  }
+
+  function rerunAll() {
+    if (!items.length) return;
+    els.rerun.disabled = true;
+    chain = chain.then(function () {
+      var seq = Promise.resolve();
+      items.forEach(function (it) {
+        seq = seq.then(function () {
+          clearShot(it, 'first');
+          clearShot(it, 'last');
+          return processItem(it);
+        });
+      });
+      return seq.then(function () {
+        els.rerun.disabled = false;
+        toast('已按当前设置重新提取', 'ok');
+      });
+    });
+  }
+
+  function clearAll() {
+    items.forEach(function (it) {
+      ['first', 'last'].forEach(function (k) {
+        var s = it.refs && it.refs.shots[k];
+        if (s && s.url) URL.revokeObjectURL(s.url);
+      });
+      if (it.refs) it.refs.el.remove();
+    });
+    items = [];
+    els.file.value = '';
+    updateStat();
+  }
+
+  function fillZip() {
+    var done = items.filter(function (i) { return i.state === 'ok'; });
+    if (!done.length) { toast('还没有提取完成的图片', 'err'); return; }
+
+    var used = Object.create(null);
+    var pending = [];
+
+    done.forEach(function (it) {
+      ['first', 'last'].forEach(function (k) {
+        var s = it.shots[k];
+        if (!s) return;
+        var name = it.base + '_' + fmtLabel(k) + '.' + s.ext;
+        if (used[name]) {
+          used[name] += 1;
+          name = it.base + '_' + fmtLabel(k) + '-' + used[name] + '.' + s.ext;
+        } else {
+          used[name] = 1;
+        }
+        pending.push(s.blob.arrayBuffer().then(function (buf) {
+          return { name: name, data: new Uint8Array(buf) };
+        }));
+      });
+    });
+
+    toast('正在打包…');
+    Promise.all(pending).then(function (files) {
+      var zip = makeZip(files);
+      downloadBlob(new Blob([zip], { type: 'application/zip' }), '首尾帧_' + stamp() + '.zip');
+      toast('已导出 ' + files.length + ' 张图片', 'ok');
+    }).catch(function (e) {
+      toast('打包失败：' + e.message, 'err');
+    });
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+
+  els.drop.addEventListener('click', function () { els.file.click(); });
+  els.drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.file.click(); }
+  });
+
+  els.file.addEventListener('change', function () {
+    addFiles(els.file.files);
+    els.file.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    window.addEventListener(ev, function (e) {
+      if (!e.dataTransfer) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      els.drop.classList.add('over');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(function (ev) {
+    window.addEventListener(ev, function (e) {
+      if (e.target === document.documentElement || e.target === document.body) els.drop.classList.remove('over');
+    });
+  });
+  window.addEventListener('drop', function (e) {
+    if (!e.dataTransfer) return;
+    e.preventDefault();
+    els.drop.classList.remove('over');
+    if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  window.addEventListener('paste', function (e) {
+    if (!e.clipboardData) return;
+    var files = e.clipboardData.files;
+    if (files && files.length) addFiles(files);
+  });
+
+  els.fmt.addEventListener('change', function () {
+    els.qualityWrap.hidden = els.fmt.value === 'png';
+  });
+
+  els.quality.addEventListener('input', function () {
+    els.qualityVal.textContent = els.quality.value + '%';
+  });
+
+  els.zip.addEventListener('click', fillZip);
+  els.rerun.addEventListener('click', rerunAll);
+  els.clear.addEventListener('click', clearAll);
+
+  updateStat();
+})();
+</script>
+</body>
+</html>
