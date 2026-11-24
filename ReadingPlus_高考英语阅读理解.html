@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📖 Reading Plus 高考英语阅读理解 · 点读 + 卡片结构分析</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            background: #0b0d0f; color: #e8edf2;
+            padding: 32px 20px 80px; min-height: 100vh;
+        }
+        .app { max-width: 1100px; margin: 0 auto; }
+        .header {
+            text-align: center; margin-bottom: 24px; padding: 24px 20px 18px;
+            background: #1a1e24; border-radius: 28px; border: 1px solid #2a3038;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+        }
+        .header h1 {
+            font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(135deg, #ff9800, #ff5722);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin-bottom: 4px;
+        }
+        .header .sub {
+            font-size: 0.9rem; color: #9aa4b0;
+            border-top: 1px solid #2a3038; padding-top: 10px; display: inline-block;
+        }
+        .section-nav {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center; margin-bottom: 24px;
+        }
+        .section-tab {
+            padding: 8px 16px; border-radius: 40px; cursor: pointer;
+            font-weight: 600; font-size: 0.82rem; transition: all 0.25s ease;
+            background: #1a1e24; color: #9aa4b0; border: 1px solid #2a3038;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .section-tab:hover { background: #232a32; color: #e8edf2; }
+        .section-tab.active { background: #e65100; color: #fff; border-color: #ff6d00; }
+        .section-tab .tab-num {
+            width: 22px; height: 22px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: 700; color: #fff;
+        }
+        .section-tab.active .tab-num { background: rgba(255,255,255,0.25); }
+        .c1{background:#e65100;} .c2{background:#c62828;} .c3{background:#1565c0;} .c4{background:#2e7d32;}
+        .c5{background:#6a1b9a;} .c6{background:#00838f;} .c7{background:#4e342e;} .c8{background:#283593;} .c9{background:#ad1457;}
+        .c10{background:#f57f17;} .c11{background:#00695c;}
+        .article-section { display: none; }
+        .article-section.active { display: block; }
+        .section-header {
+            background: linear-gradient(135deg, #1a1e24, #1f2530);
+            border-radius: 20px; padding: 20px 28px; margin-bottom: 24px;
+            border: 1px solid #2a3038;
+        }
+        .section-header h2 { font-size: 1.3rem; font-weight: 700; color: #e8edf2; margin-bottom: 4px; }
+        .section-header .section-sub { font-size: 0.85rem; color: #9aa4b0; }
+        .vocab-toolbar {
+            display: flex; flex-wrap: wrap; align-items: center;
+            justify-content: space-between; background: #151a1f;
+            padding: 12px 24px; border-radius: 60px; margin-bottom: 24px;
+            border: 1px solid #2a3038; gap: 12px;
+        }
+        .vocab-toolbar .left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .vocab-toolbar .badge {
+            font-weight: 600; color: #e8edf2; background: #232a32;
+            padding: 4px 16px; border-radius: 40px; font-size: 0.9rem;
+        }
+        .vocab-toolbar .badge span { color: #ff9800; font-weight: 700; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 18px; border: none; border-radius: 40px;
+            font-weight: 600; font-size: 0.85rem; cursor: pointer;
+            transition: all 0.2s ease; background: #232a32; color: #e8edf2;
+            border: 1px solid transparent;
+        }
+        .btn:hover { transform: scale(0.97); background: #2f3843; }
+        .btn-primary { background: #e65100; color: #fff; }
+        .btn-primary:hover { background: #bf360c; }
+        .btn-danger { background: #5a2a2a; color: #ffa8a8; }
+        .btn-danger:hover { background: #7a3232; }
+        .btn-success { background: #1e4a3a; color: #8bddb0; }
+        .btn-success:hover { background: #2a5e4a; }
+        .btn-outline { background: transparent; border-color: #3a4450; }
+        .btn-outline:hover { background: #1a2128; }
+        .hint {
+            text-align: center; font-size: 0.9rem; color: #b0bac4;
+            margin-bottom: 24px; padding: 10px 20px; background: #12171dcc;
+            backdrop-filter: blur(4px); border-radius: 60px;
+            display: inline-block; width: auto; margin-left: auto; margin-right: auto;
+            border: 1px solid #2a3038; font-weight: 500;
+        }
+        .hint .icon { margin-right: 6px; }
+        .hint strong { color: #ff9800; }
+        .sentence-card {
+            background: #14191f; border-radius: 24px;
+            border: 1px solid #262e38; margin-bottom: 24px; overflow: hidden;
+        }
+        .card-header {
+            display: flex; align-items: flex-start; gap: 16px;
+            flex-wrap: wrap; padding: 24px 28px 16px;
+        }
+        .s-number {
+            flex-shrink: 0; width: 40px; height: 40px; background: #1f2832;
+            border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-weight: 700; color: #b0bac4; margin-top: 2px;
+        }
+        .text-group { flex: 1; min-width: 200px; }
+        .text-en {
+            font-size: 1.15rem; font-weight: 500; color: #f0f4fa;
+            letter-spacing: 0.3px; line-height: 2; padding: 4px 0;
+        }
+        .text-zh {
+            font-size: 1.05rem; color: #b8c4d0; padding-left: 16px;
+            border-left: 4px solid #e65100; margin-top: 6px;
+            line-height: 2; padding: 4px 0 4px 16px;
+        }
+        .sentence-row {
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+        .sentence-row .sentence-text { flex: 1; min-width: 0; }
+        .speak-btn {
+            flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+            border: 1px solid #3a4450; background: #1f2832; color: #b0bac4;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1rem; transition: background 0.15s, color 0.15s, border-color 0.15s;
+            margin-top: 4px;
+        }
+        .speak-btn:hover { background: #2f3843; color: #ff9800; border-color: #ff9800; }
+        .speak-btn.speaking { background: #2a1a0a; color: #ff9800; border-color: #ff9800; animation: pulse 1.2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,152,0,0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(255,152,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,152,0,0); }
+        }
+        .structure-area {
+            padding: 0 28px 28px; background: #0f141a;
+            border-top: 1px solid #262e38;
+        }
+        .structure-area .structure-title {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px;
+            color: #7a8a9a; font-weight: 600; padding: 16px 0 10px;
+            border-bottom: 1px dashed #2a3440; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .structure-area .structure-title .lang-en { color: #ff9800; }
+        .structure-area .structure-title .badge {
+            background: #1f2832; font-size: 0.65rem; padding: 0 10px;
+            border-radius: 30px; color: #9aaab8; font-weight: 500;
+        }
+        .constituent-cards {
+            display: flex; flex-wrap: wrap; gap: 16px 20px; padding: 4px 0;
+        }
+        .constituent-card {
+            background: #1a2128; border: 2px solid #3a4a5a; border-radius: 16px;
+            padding: 12px 18px; min-width: 150px; flex: 0 1 auto;
+            display: flex; flex-direction: column; align-items: center;
+            transition: border-color 0.2s; position: relative;
+        }
+        .constituent-card .role-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: #8a9aa8; background: #0b0d0f;
+            padding: 0 10px; border-radius: 12px; display: inline-block;
+            margin-bottom: 6px; border: 1px solid #2a3a4a;
+        }
+        .constituent-card .en-text {
+            font-size: 17px; font-weight: 600; color: #f0f4fa;
+            text-align: center; line-height: 1.4; word-break: break-word;
+        }
+        .constituent-card .zh-text {
+            font-size: 13px; color: #ff9800; margin-top: 4px;
+            text-align: center; border-top: 1px dashed #2a3a4a;
+            padding-top: 6px; width: 100%;
+        }
+        .constituent-card .zh-text .zh-label {
+            font-size: 10px; color: #6a8a9a; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-right: 4px;
+        }
+        .constituent-card.role-subject { border-color: #7a5a5a; background: #1e161a; }
+        .constituent-card.role-subject .role-label { color: #ff8a80; border-color: #7a5a5a; }
+        .constituent-card.role-predicate { border-color: #4a7a5a; background: #161e1a; }
+        .constituent-card.role-predicate .role-label { color: #8bddb0; border-color: #4a7a5a; }
+        .constituent-card.role-object { border-color: #4a6a8a; background: #161a1e; }
+        .constituent-card.role-object .role-label { color: #82b1ff; border-color: #4a6a8a; }
+        .constituent-card.role-attribute { border-color: #8a8a4a; background: #1e1e16; }
+        .constituent-card.role-attribute .role-label { color: #ffd54f; border-color: #8a8a4a; }
+        .constituent-card.role-adverbial { border-color: #6a4a8a; background: #1a161e; }
+        .constituent-card.role-adverbial .role-label { color: #b388ff; border-color: #6a4a8a; }
+        .constituent-card.role-complement { border-color: #4a7a7a; background: #161e1e; }
+        .constituent-card.role-complement .role-label { color: #80deea; border-color: #4a7a7a; }
+        .constituent-card.role-clause { border-color: #8a7a4a; background: #1e1c16; }
+        .constituent-card.role-clause .role-label { color: #ffb74d; border-color: #8a7a4a; }
+        .constituent-card.role-other { border-color: #4a5a6a; background: #181c20; }
+        .constituent-card.role-other .role-label { color: #9aaab8; border-color: #4a5a6a; }
+        .clickable-word {
+            display: inline-block; cursor: pointer; border-radius: 6px;
+            padding: 0 4px; transition: background 0.15s, color 0.15s, transform 0.1s;
+            position: relative; color: #f0f4fa;
+            border-bottom: 3px solid transparent; font-weight: 500;
+        }
+        .clickable-word:hover {
+            background: #2a2f3a; border-bottom-color: #e65100; transform: translateY(-2px);
+        }
+        .clickable-word.en-clicked {
+            color: #ff5252 !important; border-bottom-color: #ff5252; background: #2a0e0e;
+        }
+        .clickable-word.added {
+            background: #2a1a0a !important; border-bottom-color: #ff9800 !important;
+            animation: pop 0.35s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); background: #3a2a1a; }
+            100% { transform: scale(1); }
+        }
+        .text-zh .clickable-word {
+            border-bottom: none; cursor: default; color: #b8c4d0;
+            font-weight: 400; background: transparent !important;
+            transform: none !important; pointer-events: none;
+        }
+        #wordTooltip {
+            position: fixed; pointer-events: none; background: #1a1e24;
+            border: 1px solid #e65100; border-radius: 10px;
+            padding: 4px 14px; color: #ff9800; font-size: 0.9rem;
+            font-weight: 500; z-index: 1000; display: none;
+            white-space: nowrap; max-width: 300px; overflow: hidden;
+            text-overflow: ellipsis; box-shadow: 0 6px 20px rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px); transform: translateX(-50%);
+        }
+        .vocab-panel {
+            margin-top: 32px; background: #14191f; border-radius: 28px;
+            border: 1px solid #262e38; padding: 20px 24px 24px; display: block;
+        }
+        .vocab-panel .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+        }
+        .vocab-panel .panel-header h3 {
+            font-size: 1.2rem; font-weight: 600;
+            display: flex; align-items: center; gap: 10px; color: #e8edf2;
+        }
+        .vocab-panel .panel-header h3 small { font-weight: 400; font-size: 0.85rem; color: #7a8a9a; }
+        .vocab-list {
+            display: flex; flex-wrap: wrap; gap: 10px 14px;
+            max-height: 300px; overflow-y: auto; padding: 4px 2px 8px;
+        }
+        .vocab-item {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #1a2128; padding: 6px 14px 6px 18px;
+            border-radius: 40px; border: 1px solid #2f3a48;
+            font-size: 0.95rem; font-weight: 500; color: #e8edf2; flex-wrap: wrap;
+        }
+        .vocab-item:hover { background: #232a32; }
+        .vocab-item .v-word { color: #f0f4fa; font-weight: 600; }
+        .vocab-item .v-phonetic {
+            color: #b0bac4; font-size: 0.8rem;
+            font-family: 'Courier New', monospace; background: #0b0d0f;
+            padding: 0 6px; border-radius: 12px;
+        }
+        .vocab-item .v-pos {
+            color: #ff9800; font-size: 0.75rem; text-transform: lowercase;
+            background: #2a1a0a; padding: 0 8px; border-radius: 12px;
+        }
+        .vocab-item .v-trans { color: #ff9800; font-size: 0.9rem; }
+        .vocab-item .v-lang { font-size: 0.65rem; color: #7a8a9a; font-weight: 400; }
+        .vocab-item .v-speak {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.0rem; padding: 2px 4px; border-radius: 30px;
+            transition: background 0.15s; color: #ff9800;
+        }
+        .vocab-item .v-speak:hover { background: #2a1a0a; }
+        .vocab-item .v-remove {
+            background: none; border: none; cursor: pointer;
+            color: #7a8a9a; font-size: 1rem; padding: 0 2px;
+            transition: color 0.15s; line-height: 1;
+        }
+        .vocab-item .v-remove:hover { color: #ff8a80; }
+        .empty-vocab { color: #7a8a9a; font-size: 0.95rem; padding: 12px 0; }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(6px); z-index: 999;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #14191f; max-width: 900px; width: 100%;
+            max-height: 90vh; border-radius: 36px; padding: 32px 36px 36px;
+            border: 1px solid #2f3a48; box-shadow: 0 30px 60px rgba(0,0,0,0.9);
+            display: flex; flex-direction: column; overflow: hidden;
+            position: relative; animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            0% { opacity: 0; transform: scale(0.94) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-content .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #262e38;
+            padding-bottom: 16px; margin-bottom: 20px;
+        }
+        .modal-content .modal-header h2 { font-size: 1.6rem; font-weight: 700; color: #e8edf2; }
+        .modal-content .modal-header .close-btn {
+            background: #1f2832; border: none; width: 40px; height: 40px;
+            border-radius: 50%; font-size: 1.4rem; cursor: pointer;
+            transition: background 0.2s; display: flex;
+            align-items: center; justify-content: center; color: #b0bac4;
+        }
+        .modal-content .modal-header .close-btn:hover { background: #2f3a48; }
+        .modal-vocab-grid {
+            display: flex; flex-wrap: wrap; gap: 12px 16px;
+            overflow-y: auto; padding: 6px 0 12px; flex: 1; align-content: flex-start;
+        }
+        .modal-vocab-grid .m-item {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #1a2128; padding: 8px 16px 8px 20px;
+            border-radius: 60px; border: 1px solid #2f3a48;
+            font-size: 1.0rem; font-weight: 500; color: #e8edf2; flex-wrap: wrap;
+        }
+        .modal-vocab-grid .m-item:hover { background: #232a32; }
+        .modal-vocab-grid .m-item .m-word { font-weight: 600; color: #f0f4fa; }
+        .modal-vocab-grid .m-item .m-phonetic { color: #b0bac4; font-size: 0.8rem; font-family: 'Courier New', monospace; }
+        .modal-vocab-grid .m-item .m-pos { color: #ff9800; font-size: 0.75rem; background: #2a1a0a; padding: 0 8px; border-radius: 12px; }
+        .modal-vocab-grid .m-item .m-trans { color: #ff9800; }
+        .modal-vocab-grid .m-item .m-speak {
+            background: #2a1a0a; border: none; border-radius: 30px;
+            padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+            color: #ff9800; cursor: pointer; transition: background 0.15s;
+        }
+        .modal-vocab-grid .m-item .m-speak:hover { background: #3a2a1a; }
+        .modal-actions {
+            margin-top: 20px; padding-top: 16px; border-top: 1px solid #262e38;
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .footer {
+            margin-top: 40px; text-align: center; font-size: 0.8rem; color: #5a6a7a;
+            border-top: 1px solid #1f2832; padding-top: 24px;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f141a; }
+        ::-webkit-scrollbar-thumb { background: #2f3a48; border-radius: 12px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a5a6a; }
+        @media (max-width: 700px) {
+            .card-header { padding: 18px 18px 14px; }
+            .text-en { font-size: 1.0rem; }
+            .text-zh { font-size: 0.95rem; padding-left: 12px; }
+            .structure-area { padding: 0 16px 22px; }
+            .constituent-card { min-width: 120px; padding: 10px 14px; }
+            .constituent-card .en-text { font-size: 15px; }
+            .constituent-card .zh-text { font-size: 12px; }
+            .vocab-toolbar { border-radius: 28px; padding: 14px 18px; }
+            .header h1 { font-size: 1.4rem; }
+            .section-tab { padding: 6px 10px; font-size: 0.75rem; }
+            .speak-btn { width: 30px; height: 30px; font-size: 0.9rem; }
+        }
+        @media (max-width: 480px) {
+            .constituent-cards { gap: 10px; justify-content: center; }
+            .constituent-card { min-width: 100px; flex: 1 1 40%; }
+        }
+    </style>
+    <style id="reading-plus-redesign">
+        :root { color-scheme: dark; --bg:#0e1117; --surface:#161b24; --line:#293140; --muted:#939eaf; --accent:#a4b7ff; --reading-size:20px; }
+        html { scroll-behavior:smooth; scroll-padding-top:24px; }
+        body { background:radial-gradient(ellipse at 70% 0%,#1b2238 0,transparent 46%),var(--bg); color:#e9edf6; padding:0 32px 48px; font-family:Inter,'Segoe UI','Microsoft YaHei',sans-serif; }
+        button,input { font:inherit; }
+        button:focus-visible,input:focus-visible,[tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+        .app { max-width:1440px; display:grid; grid-template-columns:246px minmax(0,1fr); gap:0 30px; }
+        .header { grid-column:1/-1; padding:0; margin:0 0 28px; background:none; border:0; box-shadow:none; text-align:left; border-radius:0; }
+        .brandbar { display:flex; justify-content:space-between; align-items:center; height:88px; border-bottom:1px solid var(--line); margin-bottom:28px; }
+        .brand { display:flex; align-items:center; gap:12px; font-weight:750; font-size:19px; letter-spacing:-.5px; }
+        .brand-mark { width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:#a8b8fb;color:#151c33; }
+        .brand small { color:#8390a6;font-size:12px;font-weight:500;letter-spacing:1px;margin-left:12px; }
+        .edition { color:#a6b0c0;font-size:12px;display:flex;align-items:center;gap:9px; }
+        .edition::before { content:'';height:6px;width:6px;background:#96d7bd;border-radius:50%; }
+        .hero { position:relative;overflow:hidden;border:1px solid #34415d;border-radius:20px;background:linear-gradient(110deg,#1c263e,#192135 70%,#222a46);padding:34px 40px; min-height:211px; }
+        .eyebrow { color:#b8c6fd;letter-spacing:3px;font-size:11px;font-weight:650;margin-bottom:12px; }
+        .header h1 { font-size:32px;letter-spacing:-1px;line-height:1.35;font-weight:700;background:none;-webkit-text-fill-color:#f0f3ff;color:#f0f3ff;margin-bottom:11px;position:relative;z-index:1; }
+        .header h1 em { font-style:normal;color:#a8baff;-webkit-text-fill-color:#a8baff; }
+        .header .sub { color:#adb8cb;border:0;padding:0;font-size:13px;line-height:1.8;position:relative;z-index:1; }
+        .hero-tags { display:flex;gap:20px;color:#cad4e8;font-size:11px;margin-top:20px;position:relative;z-index:1; }
+        .hero-tags span { display:flex;align-items:center;gap:7px; }
+        .hero-tags b { width:5px;height:5px;background:#9baded;border-radius:50%; }
+        .orbit-art { position:absolute;right:34px;top:-20px;width:340px;height:250px;opacity:.75;pointer-events:none; }
+        .section-nav { grid-column:1;grid-row:2/7;display:flex;flex-direction:column;justify-content:flex-start;gap:5px;position:sticky;top:24px;align-self:start;padding:19px 12px;background:#141922;border:1px solid var(--line);border-radius:16px;margin:0; }
+        .directory-head { display:flex;justify-content:space-between;align-items:center;color:#e0e6f1;font-size:13px;font-weight:650;padding:0 8px 14px; }
+        .directory-head span { color:#8994a8;background:#222a39;border-radius:5px;padding:2px 7px;font-size:10px; }
+        .directory-search { display:flex;align-items:center;margin:0 5px 14px;background:#0f141d;border:1px solid #2a3343;border-radius:8px;padding:0 10px;gap:7px;color:#7e8ba2; }
+        .directory-search input { width:100%;min-width:0;border:0;outline:0;background:transparent;padding:10px 0;color:#dfe7f6;font-size:12px; }
+        .directory-search input::placeholder { color:#758196; }
+        .section-tab { padding:11px 10px;border-radius:9px;white-space:normal;font-size:12px;font-weight:500;border:1px solid transparent;background:none;color:#9ba8bd;gap:10px;line-height:1.5; }
+        .section-tab:hover { background:#1e2635;color:#e2eaff; }
+        .section-tab.active { background:#26324d;border-color:#394c74;color:#d4dfff;font-weight:650; }
+        .section-tab .tab-num { width:25px;height:25px;border-radius:6px;background:#222b3b;color:#8795af;font-size:10px;flex-shrink:0; }
+        .section-tab.active .tab-num { background:#9aaff1;color:#16233f; }
+        .section-tab.active::after { content:'';width:5px;height:5px;background:#b4c5ff;border-radius:50%;margin-left:auto;flex-shrink:0; }
+        .directory-note { margin:15px 8px 0;padding-top:16px;border-top:1px solid var(--line);color:#8995a9;font-size:11px;line-height:1.9; }
+        .directory-note strong { color:#bcc9df;font-weight:500; }
+        #directoryEmpty { color:#8895a9;font-size:12px;padding:10px; }
+        .vocab-toolbar,.hint,#sentencesContainer,.vocab-panel,.footer,.reading-controls { grid-column:2;min-width:0; }
+        .vocab-toolbar { background:#161c27;border:1px solid var(--line);border-radius:12px;padding:13px 17px;gap:13px;margin:0 0 16px; }
+        .vocab-toolbar .left { gap:12px; }
+        .vocab-toolbar .badge { padding:0;background:none;font-size:12px;color:#c7d1e1; }
+        .vocab-toolbar .badge span { background:#2a3550;border-radius:5px;padding:2px 7px;color:#bed0ff;margin-left:5px; }
+        .btn { border-radius:7px;padding:8px 12px;font-size:11px;font-weight:500;min-height:34px;background:#222c3d;color:#bfcce0;border:1px solid #323e53;transition:background .18s,border-color .18s; }
+        .btn:hover { transform:none;background:#303d54;border-color:#526384; }
+        .btn-primary { background:#a8bbff;color:#15213b;border-color:#a8bbff;font-weight:650; }
+        .btn-primary:hover { background:#c0ceff;border-color:#c0ceff; }
+        .btn-success { background:#1c302e;color:#a5d0c2;border-color:#2e4a43; }
+        .btn-success:hover { background:#28463e;border-color:#487565; }
+        .btn-danger { background:none;color:#c6969b;border-color:#50343b; }
+        .btn-danger:hover { background:#3c252e;border-color:#79505a; }
+        .btn-outline { background:transparent;color:#9facbf;border-color:#354054; }
+        .hint { width:100%;text-align:left;font-size:11px;line-height:1.9;border:0;border-radius:0;background:none;backdrop-filter:none;padding:0 2px;margin:0 0 21px;color:#8794a9; }
+        .hint strong { color:#b6c7ff;font-weight:500; }
+        .reading-controls { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px; }
+        .control-label { color:#9ba9bf;font-size:11px;letter-spacing:1.5px; }
+        .control-group { display:flex;gap:7px;flex-wrap:wrap; }
+        .control-group .btn { background:#171e2a;color:#9eabc1;border-color:#303b50; }
+        .control-group .btn[aria-pressed="true"] { color:#c4d2ff;background:#26324d;border-color:#43587e; }
+        .section-header { position:relative;overflow:hidden;background:none;border:0;border-radius:0;padding:4px 0 23px;margin-bottom:23px;border-bottom:1px solid #2b3445; }
+        .article-kicker { display:flex;gap:10px;color:#9fafd0;font-size:10px;font-weight:550;letter-spacing:1.3px;margin-bottom:12px; }
+        .article-kicker span { background:#252f45;color:#b5c8fa;padding:3px 7px;border-radius:4px;letter-spacing:.5px; }
+        .section-header h2 { font-size:24px;font-weight:650;line-height:1.5;color:#eef2ff;letter-spacing:-.5px;margin-bottom:6px; }
+        .section-header .section-sub { font-size:12px;color:#8897ae;line-height:1.8; }
+        .sentence-card { background:#171d28;border:1px solid #2b3547;border-radius:14px;margin-bottom:19px;box-shadow:0 6px 22px #00000012; }
+        .card-header { padding:24px 25px 20px;gap:16px;flex-wrap:nowrap; }
+        .s-number { width:28px;height:28px;font-size:11px;font-family:Consolas,monospace;border-radius:7px;background:#26324a;color:#aebfea;margin-top:7px; }
+        .text-group { min-width:0; }
+        .text-en { font-family:Georgia,'Times New Roman',serif;font-size:var(--reading-size);line-height:1.95;letter-spacing:.1px;font-weight:400;color:#e6edf9; }
+        .clickable-word { font-weight:inherit;padding:0 1px;border-bottom:2px solid transparent;border-radius:3px; }
+        .clickable-word:hover { color:#c6d5ff;background:#2d3b58;border-bottom-color:#9eb7ff;transform:none; }
+        .clickable-word.en-clicked { color:#bfd0ff !important;background:#283957;border-bottom-color:#9ab3fa; }
+        .clickable-word.added { background:#2d4164 !important;border-bottom-color:#b1c7ff !important; }
+        .text-zh { font-size:13px;color:#98a8c0;line-height:1.9;border-left:2px solid #445778;margin-top:12px;padding:3px 0 3px 12px; }
+        .text-zh .clickable-word { color:#a4b1c5;font-weight:400; }
+        .structure-area { background:#131923;padding:0 24px 21px;border-top:1px solid #283245; }
+        .structure-area .structure-title { padding:15px 0 11px;margin-bottom:7px;border:0;font-size:10px;letter-spacing:.6px;color:#7d8ea9;justify-content:space-between; }
+        .structure-area .structure-title .lang-en { color:#9baac4; }
+        .structure-area .structure-title .badge { background:none;color:#73839c;font-size:10px;padding:0; }
+        .constituent-cards { gap:10px;align-items:stretch; }
+        .constituent-card { padding:12px 14px;min-width:118px;border-width:1px;border-radius:8px;align-items:flex-start;flex:1 1 130px;border-color:#334156;background:#1a2230; }
+        .constituent-card .role-label { font-size:9px;border:0;padding:0;background:none;border-radius:0;font-weight:550;margin-bottom:8px;letter-spacing:.4px; }
+        .constituent-card .en-text { font-size:14px;font-family:Georgia,serif;font-weight:400;color:#d9e3f4;text-align:left;line-height:1.6; }
+        .constituent-card .zh-text { text-align:left;color:#8494af;font-size:11px;border:0;padding-top:5px;margin-top:auto;line-height:1.6; }
+        .constituent-card .zh-text .zh-label { display:none; }
+        .constituent-card.role-subject { background:#291f2b;border-color:#513649; }
+        .constituent-card.role-subject .role-label { color:#d9a0b7; }
+        .constituent-card.role-predicate { background:#192a27;border-color:#304c44; }
+        .constituent-card.role-predicate .role-label { color:#8fc4b0; }
+        .constituent-card.role-object { background:#1b2639;border-color:#354969; }
+        .constituent-card.role-object .role-label { color:#9cb9ea; }
+        .constituent-card.role-attribute { background:#29281e;border-color:#504a31; }
+        .constituent-card.role-attribute .role-label { color:#c9be8c; }
+        .constituent-card.role-adverbial { background:#251f35;border-color:#453859; }
+        .constituent-card.role-adverbial .role-label { color:#bba4da; }
+        .constituent-card.role-complement { background:#182b30;border-color:#315059; }
+        .constituent-card.role-complement .role-label { color:#95c7ce; }
+        .constituent-card.role-clause { background:#2b251e;border-color:#534434; }
+        .constituent-card.role-clause .role-label { color:#d1ad86; }
+        .vocab-panel { border-radius:14px;background:#171e2a;border-color:#303c51;padding:22px;margin-top:10px; }
+        .vocab-panel .panel-header h3 { font-size:15px;color:#d7e2f6; }
+        .vocab-panel .panel-header h3 small { font-size:11px; }
+        .empty-vocab { width:100%;text-align:center;border:1px dashed #35435a;border-radius:9px;background:#141b26;padding:32px 16px;line-height:1.8;color:#8898b3;font-size:12px; }
+        .vocab-item { border-radius:8px;background:#202a3b;border-color:#34435c;font-size:13px; }
+        .vocab-item .v-trans,.vocab-item .v-pos,.vocab-item .v-speak { color:#b5c8ff; }
+        .vocab-item .v-pos { background:#2a3854; }
+        #wordTooltip { background:#26334b;border-color:#5974a8;color:#dae5ff;padding:9px 14px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px #0005; }
+        .modal-overlay { background:#080d17cc; }
+        .modal-content { border-radius:18px;background:#171e2b;border-color:#3a4861;padding:25px; }
+        .modal-content .modal-header h2 { font-size:21px; }
+        .modal-vocab-grid .m-item { border-radius:9px;background:#222d41;border-color:#3a4b68;font-size:14px; }
+        .modal-vocab-grid .m-item .m-pos,.modal-vocab-grid .m-item .m-trans,.modal-vocab-grid .m-item .m-speak { color:#bacbff; }
+        .modal-vocab-grid .m-item .m-pos,.modal-vocab-grid .m-item .m-speak { background:#2b3b59; }
+        .footer { margin-top:27px;padding-top:20px;font-size:10px;color:#74829a;border-color:#273245;display:flex;justify-content:space-between;gap:12px;line-height:1.8; }
+        body.hide-translations .text-zh { display:none; }
+        body.hide-structures .structure-area { display:none; }
+        ::selection { background:#465d91;color:#fff; }
+        ::-webkit-scrollbar-thumb { background:#3a4862; }
+        @media(min-width:1200px) { .vocab-toolbar .badge small { display:none; } }
+        @media(max-width:1050px) { body { padding:0 22px 35px; } .app { grid-template-columns:211px minmax(0,1fr);gap:0 22px; } .hero { padding:30px; } .orbit-art { right:-55px;opacity:.4; } .vocab-toolbar { align-items:flex-start; } .header h1 { font-size:29px; } }
+        @media(max-width:760px) {
+            body { padding:0 15px 30px; } .app { display:block; } .brandbar { height:72px;margin-bottom:18px; } .brand small { display:none; } .edition { font-size:10px; } .header { margin-bottom:18px; } .hero { padding:25px 23px;min-height:200px; } .header h1 { font-size:27px; } .header .sub { font-size:12px;max-width:260px; } .orbit-art { right:-145px;opacity:.23; } .hero-tags { gap:14px;font-size:10px; } .section-nav { position:relative;top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:14px 10px;margin-bottom:18px;gap:5px; } .directory-head,.directory-search,.directory-note,#directoryEmpty { grid-column:1/-1; } .directory-note { display:none; } .directory-search { margin-bottom:5px; } .section-tab { padding:7px 6px;font-size:10px;gap:6px; } .section-tab .tab-num { width:20px;height:20px;font-size:9px; } .section-tab.active::after { display:none; } .vocab-toolbar { padding:12px;gap:12px;border-radius:11px; } .vocab-toolbar .badge small { display:none; } .btn { padding:7px 10px;font-size:10px; } .reading-controls { gap:8px;align-items:flex-start; } .control-label { padding-top:10px;font-size:10px;white-space:nowrap; } .control-group { gap:5px;justify-content:flex-end; } .section-header h2 { font-size:21px; } .section-header { padding-bottom:18px;margin-bottom:18px; } .card-header { padding:18px 15px;gap:10px; } .s-number { width:24px;height:24px;font-size:10px;flex-shrink:0; } .text-en { font-size:calc(var(--reading-size) - 2px);line-height:1.85; } .text-zh { font-size:12px; } .structure-area { padding:0 15px 17px; } .constituent-card { min-width:100px;flex:1 1 42%;padding:11px; } .constituent-card .en-text { font-size:13px; } .vocab-panel { padding:16px; } .vocab-panel .panel-header h3 { font-size:13px; } .footer { flex-direction:column;gap:2px; } .modal-content { padding:20px 16px; } }
+        @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation:none !important;transition:none !important; } }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <header class="header">
+            <div class="brandbar"><div class="brand"><span class="brand-mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6v14" stroke="currentColor" stroke-width="1.6"/></svg></span>Reading Plus <small>READ · UNDERSTAND · GROW</small></div><div class="edition">高考英语阅读理解 · 精读专版</div></div>
+            <div class="hero"><div class="eyebrow">GAOKAO ENGLISH READING · READ IT RIGHT.</div><h1>高考阅读，<em>读懂每一个句子。</em></h1><div class="sub"><span id="heroCount">2</span> 篇精选文章（记叙文 + 说明文 + 词汇卡）。<br>逐词点读、句子拆解，专属生词本随读随存。</div><div class="hero-tags"><span><b></b>逐词点读</span><span><b></b>句子拆解</span><span><b></b>专属生词本</span></div>
+            <svg class="orbit-art" viewBox="0 0 340 250" fill="none" aria-hidden="true"><circle cx="195" cy="130" r="104" stroke="#6279b1" stroke-opacity=".3"/><circle cx="195" cy="130" r="80" stroke="#6279b1" stroke-opacity=".22"/><ellipse cx="195" cy="130" rx="149" ry="55" transform="rotate(-30 195 130)" stroke="#839cdc" stroke-opacity=".55"/><circle cx="195" cy="130" r="49" fill="#263455" stroke="#526995"/><path d="M169 120c10-6 19-6 26-1 9-5 17-5 27-1v37c-10-4-18-4-27 1-7-5-16-5-26 1v-37Z" fill="#33466e" stroke="#a9bbeb" stroke-width="1.7" stroke-linejoin="round"/><path d="M195 119v37m-19-28 12-2m-12 11 12-2m14-7 12-2m-12 11 12-2" stroke="#a9bbeb" stroke-width="1.5"/><circle cx="79" cy="177" r="6" fill="#a9bbeb"/><circle cx="288" cy="70" r="4" fill="#95c9ba"/><path d="M110 60v10m-5-5h10M280 185v10m-5-5h10" stroke="#7e94cb" stroke-width="1.5"/></svg></div>
+        </header>
+
+        <nav class="section-nav" id="sectionNav" aria-label="文章目录">
+            <div class="directory-head">探索文章 <span id="directoryCount">2 ARTICLES</span></div>
+            <label class="directory-search"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m12 12 5 5" stroke="currentColor" stroke-width="1.5"/></svg><input id="articleSearch" type="search" placeholder="搜索文章标题…" aria-label="搜索文章标题" /></label>
+            <!-- 文章标签页由 JS 根据 articlesData 动态渲染 -->
+            <div id="directoryEmpty" hidden>没有找到匹配的文章</div>
+            <div class="directory-note"><strong>每天一点，读得更远。</strong><br>点击英文单词即可发音并收藏。<br>生词按文章自动保存到本机浏览器。</div>
+        </nav>
+
+        <div class="vocab-toolbar">
+            <div class="left">
+                <span class="badge">📖 生词本 <span id="vocabCount">0</span> <small id="vocabArticleLabel" style="color:#7a8a9a;font-weight:400;font-size:0.75rem;"></small></span>
+                <button class="btn btn-outline" id="toggleVocabPanelBtn">📂 收起面板</button>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="generateVocabPageBtn">📄 生成点读页面</button>
+                <button class="btn btn-outline" id="speakFullZhBtn">🗣️ 朗读全文中文</button>
+                <button class="btn btn-success" id="exportAllVocabBtn">📦 导出全部生词</button>
+                <button class="btn btn-danger" id="clearVocabBtn">🗑️ 清空</button>
+            </div>
+        </div>
+
+        <div class="hint">
+            <span class="icon">👆</span> 点击 <strong>英文单词</strong> 发音并收藏 · 点击句子旁的 <strong>🔊</strong> 朗读整句
+        </div>
+
+        <div class="reading-controls"><span class="control-label">精读工作区 / CLOSE READING</span><div class="control-group"><button class="btn" id="translationToggle" aria-pressed="true">中文译文</button><button class="btn" id="structureToggle" aria-pressed="true">结构分析</button><button class="btn" id="fontDecrease" aria-label="缩小英文字号">A−</button><button class="btn" id="fontIncrease" aria-label="增大英文字号">A+</button></div></div>
+        <main id="sentencesContainer" aria-label="文章精读"></main>
+
+        <div class="vocab-panel" id="vocabPanel">
+            <div class="panel-header">
+                <h3>📚 我的生词本 <small id="panelCount">(0个词)</small></h3>
+                <div><button class="btn btn-success" id="speakAllVocabBtn">🔊 朗读全部</button></div>
+            </div>
+            <div class="vocab-list" id="vocabList"><div class="empty-vocab">✨ 还没有生词，点击英文单词试试吧</div></div>
+        </div>
+        <div id="wordTooltip"></div>
+        <div class="modal-overlay" id="vocabModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📖 生词本 · 点读页面</h2>
+                    <button class="close-btn" id="closeModalBtn">✕</button>
+                </div>
+                <div class="modal-vocab-grid" id="modalVocabGrid"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-success" id="modalSpeakAllBtn">🔊 朗读全部</button>
+                    <button class="btn btn-outline" id="modalCloseBtn">关闭</button>
+                </div>
+            </div>
+        </div>
+        <footer class="footer"><span>Reading Plus · 高考英语阅读理解点读专版</span><span><span id="footerCount">2</span> 篇内容 / 点读 · 拆解 · 收藏</span></footer>
+    </div>
+
+    <script>
+        const articlesData = [
+            // ===== 01 不认输的音乐老师 =====
+            {
+                title: '01 不认输的音乐老师',
+                sub: 'A music teacher who never gave up (记叙文 · 人文故事)',
+                sentences: [
+                    {
+                        id: 1,
+                        en: `When Mr. Bennett arrived at a small school in the mountains, he found the music room empty except for an old piano.`,
+                        zh: `当班尼特先生来到山区一所小学校时，他发现那间音乐教室空荡荡的，只有一架旧钢琴。`,
+                        analysisEn: [
+                            { role: '时间状语从句', text: 'When Mr. Bennett arrived at a small school in the mountains', cls: 'role-clause', translation: '当班尼特先生来到山区一所小学校时' },
+                            { role: '主语', text: 'he', cls: 'role-subject', translation: '他' },
+                            { role: '谓语', text: 'found', cls: 'role-predicate', translation: '发现' },
+                            { role: '宾语', text: 'the music room', cls: 'role-object', translation: '那间音乐教室' },
+                            { role: '状语', text: 'empty except for an old piano', cls: 'role-adverbial', translation: '空荡荡的，只有一架旧钢琴' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        en: `"Nobody wants to learn music here," the head teacher told him.`,
+                        zh: `“这里没人想学音乐，”校长对他说。`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"Nobody wants to learn music here,"', cls: 'role-clause', translation: '“这里没人想学音乐，”' },
+                            { role: '主语', text: 'the head teacher', cls: 'role-subject', translation: '校长' },
+                            { role: '谓语', text: 'told', cls: 'role-predicate', translation: '告诉' },
+                            { role: '宾语', text: 'him', cls: 'role-object', translation: '他' }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        en: `"The children have more important things to worry about."`,
+                        zh: `“孩子们有更重要的事情要操心。”`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"The children have more important things to worry about."', cls: 'role-clause', translation: '“孩子们有更重要的事情要操心。”' }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        en: `Still, Mr. Bennett opened the door every afternoon, hoping someone would walk in.`,
+                        zh: `不过，班尼特先生每天下午都打开那扇门，希望有人会走进来。`,
+                        analysisEn: [
+                            { role: '衔接词', text: 'Still', cls: 'role-other', translation: '不过／尽管如此' },
+                            { role: '主语', text: 'Mr. Bennett', cls: 'role-subject', translation: '班尼特先生' },
+                            { role: '谓语', text: 'opened', cls: 'role-predicate', translation: '打开' },
+                            { role: '宾语', text: 'the door', cls: 'role-object', translation: '那扇门' },
+                            { role: '时间状语', text: 'every afternoon', cls: 'role-adverbial', translation: '每天下午' },
+                            { role: '状语(现在分词)', text: 'hoping someone would walk in', cls: 'role-adverbial', translation: '希望有人会走进来' }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        en: `For two weeks, no one came.`,
+                        zh: `整整两周，没有人来。`,
+                        analysisEn: [
+                            { role: '时间状语', text: 'For two weeks', cls: 'role-adverbial', translation: '两周以来' },
+                            { role: '主语', text: 'no one', cls: 'role-subject', translation: '没有人' },
+                            { role: '谓语', text: 'came', cls: 'role-predicate', translation: '来' }
+                        ]
+                    },
+                    {
+                        id: 6,
+                        en: `Then a girl named Lily stood outside, watching him play.`,
+                        zh: `然后，一个叫莉莉的女孩站在门外，看着他弹琴。`,
+                        analysisEn: [
+                            { role: '衔接词', text: 'Then', cls: 'role-other', translation: '然后' },
+                            { role: '主语', text: 'a girl named Lily', cls: 'role-subject', translation: '一个叫莉莉的女孩' },
+                            { role: '谓语', text: 'stood', cls: 'role-predicate', translation: '站着' },
+                            { role: '状语(地点)', text: 'outside', cls: 'role-adverbial', translation: '在外面' },
+                            { role: '状语(现在分词)', text: 'watching him play', cls: 'role-adverbial', translation: '看着他弹琴' }
+                        ]
+                    },
+                    {
+                        id: 7,
+                        en: `She admitted that her family could not afford lessons, but she had always wanted to learn.`,
+                        zh: `她承认家里负担不起学费，但她一直都想学。`,
+                        analysisEn: [
+                            { role: '主语', text: 'She', cls: 'role-subject', translation: '她' },
+                            { role: '谓语', text: 'admitted', cls: 'role-predicate', translation: '承认' },
+                            { role: '宾语从句', text: 'that her family could not afford lessons', cls: 'role-clause', translation: '她家负担不起学费' },
+                            { role: '连词(转折)', text: 'but', cls: 'role-other', translation: '但是' },
+                            { role: '主语2', text: 'she', cls: 'role-subject', translation: '她' },
+                            { role: '谓语2', text: 'had always wanted', cls: 'role-predicate', translation: '一直想要' },
+                            { role: '宾语2', text: 'to learn', cls: 'role-object', translation: '学习' }
+                        ]
+                    },
+                    {
+                        id: 8,
+                        en: `Mr. Bennett smiled and said, "Lessons are free — your company is payment enough."`,
+                        zh: `班尼特先生微笑着说：“课程免费——你的陪伴就是最好的报酬。”`,
+                        analysisEn: [
+                            { role: '主语', text: 'Mr. Bennett', cls: 'role-subject', translation: '班尼特先生' },
+                            { role: '谓语', text: 'smiled and said', cls: 'role-predicate', translation: '微笑着说' },
+                            { role: '直接引语', text: '"Lessons are free — your company is payment enough."', cls: 'role-clause', translation: '“课程免费——你的陪伴就是最好的报酬。”' }
+                        ]
+                    },
+                    {
+                        id: 9,
+                        en: `Soon more students followed.`,
+                        zh: `很快，更多的学生跟了进来。`,
+                        analysisEn: [
+                            { role: '状语', text: 'Soon', cls: 'role-adverbial', translation: '很快' },
+                            { role: '主语', text: 'more students', cls: 'role-subject', translation: '更多学生' },
+                            { role: '谓语', text: 'followed', cls: 'role-predicate', translation: '跟来' }
+                        ]
+                    },
+                    {
+                        id: 10,
+                        en: `Without proper instruments, they made their own.`,
+                        zh: `没有像样的乐器，他们就自己做。`,
+                        analysisEn: [
+                            { role: '状语', text: 'Without proper instruments', cls: 'role-adverbial', translation: '没有合适的乐器' },
+                            { role: '主语', text: 'they', cls: 'role-subject', translation: '他们' },
+                            { role: '谓语', text: 'made', cls: 'role-predicate', translation: '自己做' },
+                            { role: '宾语', text: 'their own', cls: 'role-object', translation: '自己的（乐器）' }
+                        ]
+                    },
+                    {
+                        id: 11,
+                        en: `One boy turned empty boxes into drums, while two sisters sang using notes from an old textbook.`,
+                        zh: `一个男孩把空盒子敲成鼓，两姐妹则用一本旧课本上的乐谱放声歌唱。`,
+                        analysisEn: [
+                            { role: '主语', text: 'One boy', cls: 'role-subject', translation: '一个男孩' },
+                            { role: '谓语', text: 'turned', cls: 'role-predicate', translation: '把……变成' },
+                            { role: '宾语', text: 'empty boxes', cls: 'role-object', translation: '空盒子' },
+                            { role: '补语', text: 'into drums', cls: 'role-complement', translation: '成鼓' },
+                            { role: '连词', text: 'while', cls: 'role-other', translation: '而' },
+                            { role: '主语2', text: 'two sisters', cls: 'role-subject', translation: '两姐妹' },
+                            { role: '谓语2', text: 'sang', cls: 'role-predicate', translation: '唱' },
+                            { role: '方式状语', text: 'using notes from an old textbook', cls: 'role-adverbial', translation: '用一本旧课本上的乐谱' }
+                        ]
+                    },
+                    {
+                        id: 12,
+                        en: `Mr. Bennett did not mind the noise.`,
+                        zh: `班尼特先生并不介意那些噪音。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Mr. Bennett', cls: 'role-subject', translation: '班尼特先生' },
+                            { role: '谓语', text: 'did not mind', cls: 'role-predicate', translation: '并不介意' },
+                            { role: '宾语', text: 'the noise', cls: 'role-object', translation: '噪音' }
+                        ]
+                    },
+                    {
+                        id: 13,
+                        en: `"Music is not about expensive tools," he often said.`,
+                        zh: `“音乐并不在于昂贵的工具，”他常常这样说。`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"Music is not about expensive tools,"', cls: 'role-clause', translation: '“音乐并不在于昂贵的工具，”' },
+                            { role: '主语', text: 'he', cls: 'role-subject', translation: '他' },
+                            { role: '谓语', text: 'often said', cls: 'role-predicate', translation: '常常说' }
+                        ]
+                    },
+                    {
+                        id: 14,
+                        en: `"It is about listening to each other."`,
+                        zh: `“而在于彼此倾听。”`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"It is about listening to each other."', cls: 'role-clause', translation: '“而在于彼此倾听。”' }
+                        ]
+                    },
+                    {
+                        id: 15,
+                        en: `Word spread to nearby villages, and in spring the school held its first concert.`,
+                        zh: `消息传到附近的村庄，春天时，学校举办了第一场音乐会。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Word', cls: 'role-subject', translation: '消息' },
+                            { role: '谓语', text: 'spread', cls: 'role-predicate', translation: '传开了' },
+                            { role: '状语', text: 'to nearby villages', cls: 'role-adverbial', translation: '到附近村庄' },
+                            { role: '连词', text: 'and', cls: 'role-other', translation: '并且' },
+                            { role: '时间状语', text: 'in spring', cls: 'role-adverbial', translation: '在春天' },
+                            { role: '主语2', text: 'the school', cls: 'role-subject', translation: '学校' },
+                            { role: '谓语2', text: 'held', cls: 'role-predicate', translation: '举办' },
+                            { role: '宾语2', text: 'its first concert', cls: 'role-object', translation: '第一场音乐会' }
+                        ]
+                    },
+                    {
+                        id: 16,
+                        en: `Parents walked hours to attend.`,
+                        zh: `家长们走了好几个小时赶来参加。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Parents', cls: 'role-subject', translation: '家长们' },
+                            { role: '谓语', text: 'walked', cls: 'role-predicate', translation: '步行' },
+                            { role: '状语', text: 'hours', cls: 'role-adverbial', translation: '好几个小时' },
+                            { role: '目的状语', text: 'to attend', cls: 'role-adverbial', translation: '为了参加' }
+                        ]
+                    },
+                    {
+                        id: 17,
+                        en: `When the children finished their last song, the room was silent for a moment — then filled with applause.`,
+                        zh: `当孩子们唱完最后一首歌时，礼堂里安静了一瞬——随后响起了掌声。`,
+                        analysisEn: [
+                            { role: '时间状语从句', text: 'When the children finished their last song', cls: 'role-clause', translation: '当孩子们唱完最后一首歌时' },
+                            { role: '主语', text: 'the room', cls: 'role-subject', translation: '礼堂里' },
+                            { role: '谓语', text: 'was silent', cls: 'role-predicate', translation: '一片寂静' },
+                            { role: '时间状语', text: 'for a moment', cls: 'role-adverbial', translation: '一瞬间' },
+                            { role: '衔接词', text: 'then', cls: 'role-other', translation: '随后' },
+                            { role: '谓语2', text: 'filled with applause', cls: 'role-predicate', translation: '响起了掌声' }
+                        ]
+                    },
+                    {
+                        id: 18,
+                        en: `Many parents had tears in their eyes.`,
+                        zh: `许多家长眼里噙着泪水。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Many parents', cls: 'role-subject', translation: '许多家长' },
+                            { role: '谓语', text: 'had', cls: 'role-predicate', translation: '眼里含着' },
+                            { role: '宾语', text: 'tears', cls: 'role-object', translation: '泪水' },
+                            { role: '状语', text: 'in their eyes', cls: 'role-adverbial', translation: '在眼中' }
+                        ]
+                    },
+                    {
+                        id: 19,
+                        en: `Today, Lily teaches at a city conservatory, but every summer she returns to the mountains.`,
+                        zh: `如今，莉莉在一所城市的音乐学院任教，但每年夏天她都会回到山里。`,
+                        analysisEn: [
+                            { role: '时间状语', text: 'Today', cls: 'role-adverbial', translation: '如今' },
+                            { role: '主语', text: 'Lily', cls: 'role-subject', translation: '莉莉' },
+                            { role: '谓语', text: 'teaches', cls: 'role-predicate', translation: '任教' },
+                            { role: '状语(地点)', text: 'at a city conservatory', cls: 'role-adverbial', translation: '在一所城市音乐学院' },
+                            { role: '连词(转折)', text: 'but', cls: 'role-other', translation: '但是' },
+                            { role: '时间状语2', text: 'every summer', cls: 'role-adverbial', translation: '每年夏天' },
+                            { role: '主语2', text: 'she', cls: 'role-subject', translation: '她' },
+                            { role: '谓语2', text: 'returns', cls: 'role-predicate', translation: '回到' },
+                            { role: '宾语2', text: 'the mountains', cls: 'role-object', translation: '山里' }
+                        ]
+                    },
+                    {
+                        id: 20,
+                        en: `"Mr. Bennett taught me more than music," she says.`,
+                        zh: `“班尼特先生教给我的不只是音乐，”她说。`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"Mr. Bennett taught me more than music,"', cls: 'role-clause', translation: '“班尼特先生教给我的不只是音乐，”' },
+                            { role: '主语', text: 'she', cls: 'role-subject', translation: '她' },
+                            { role: '谓语', text: 'says', cls: 'role-predicate', translation: '说' }
+                        ]
+                    },
+                    {
+                        id: 21,
+                        en: `"He taught me that where you start does not decide where you finish."`,
+                        zh: `“他教会我：起点并不能决定终点。”`,
+                        analysisEn: [
+                            { role: '直接引语', text: '"He taught me that where you start does not decide where you finish."', cls: 'role-clause', translation: '“他教会我：起点并不能决定终点。”' }
+                        ]
+                    }
+                ]
+            },
+            // ===== 02 我们为什么要睡觉 =====
+            {
+                title: '02 我们为什么要睡觉',
+                sub: 'Why do we sleep? (说明文 · 科普知识)',
+                sentences: [
+                    {
+                        id: 1,
+                        en: `For a long time, scientists thought sleep was simply a way for the body to save energy.`,
+                        zh: `很长一段时间以来，科学家认为睡眠只是身体节省能量的一种方式。`,
+                        analysisEn: [
+                            { role: '时间状语', text: 'For a long time', cls: 'role-adverbial', translation: '很长一段时间以来' },
+                            { role: '主语', text: 'scientists', cls: 'role-subject', translation: '科学家们' },
+                            { role: '谓语', text: 'thought', cls: 'role-predicate', translation: '认为' },
+                            { role: '宾语从句', text: 'sleep was simply a way for the body to save energy', cls: 'role-clause', translation: '睡眠只是身体节省能量的一种方式' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        en: `Today, however, research shows that sleep is far more active than that.`,
+                        zh: `如今，研究表明，睡眠远非如此简单。`,
+                        analysisEn: [
+                            { role: '时间状语', text: 'Today', cls: 'role-adverbial', translation: '如今' },
+                            { role: '衔接词', text: 'however', cls: 'role-other', translation: '然而' },
+                            { role: '主语', text: 'research', cls: 'role-subject', translation: '研究' },
+                            { role: '谓语', text: 'shows', cls: 'role-predicate', translation: '表明' },
+                            { role: '宾语从句', text: 'that sleep is far more active than that', cls: 'role-clause', translation: '睡眠远比这活跃得多' }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        en: `While you rest, your brain is busy sorting through the day's experiences, deciding which memories to keep and which to throw away.`,
+                        zh: `当你休息时，你的大脑正忙着梳理一天的经历，决定哪些记忆该保留、哪些该丢弃。`,
+                        analysisEn: [
+                            { role: '时间状语从句', text: 'While you rest', cls: 'role-clause', translation: '当你休息时' },
+                            { role: '主语', text: 'your brain', cls: 'role-subject', translation: '你的大脑' },
+                            { role: '谓语', text: 'is busy', cls: 'role-predicate', translation: '正忙着' },
+                            { role: '状语(现在分词)', text: 'sorting through the day\'s experiences', cls: 'role-adverbial', translation: '梳理一天的经历' },
+                            { role: '状语(现在分词)', text: 'deciding which memories to keep and which to throw away', cls: 'role-adverbial', translation: '决定哪些记忆该保留、哪些该丢弃' }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        en: `One important job of sleep is physical repair.`,
+                        zh: `睡眠的一项重要工作就是身体修复。`,
+                        analysisEn: [
+                            { role: '主语', text: 'One important job of sleep', cls: 'role-subject', translation: '睡眠的一项重要工作' },
+                            { role: '谓语(系动词)', text: 'is', cls: 'role-predicate', translation: '是' },
+                            { role: '表语', text: 'physical repair', cls: 'role-complement', translation: '身体修复' }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        en: `During deep sleep, the body produces hormones that help muscles and bones grow.`,
+                        zh: `在深度睡眠中，身体会产生帮助肌肉和骨骼生长的激素。`,
+                        analysisEn: [
+                            { role: '时间状语', text: 'During deep sleep', cls: 'role-adverbial', translation: '在深度睡眠中' },
+                            { role: '主语', text: 'the body', cls: 'role-subject', translation: '身体' },
+                            { role: '谓语', text: 'produces', cls: 'role-predicate', translation: '产生' },
+                            { role: '宾语', text: 'hormones', cls: 'role-object', translation: '激素' },
+                            { role: '定语从句', text: 'that help muscles and bones grow', cls: 'role-clause', translation: '帮助肌肉和骨骼生长的' }
+                        ]
+                    },
+                    {
+                        id: 6,
+                        en: `This is why children need more sleep than adults — their bodies are building themselves.`,
+                        zh: `这就是为什么孩子比成年人需要更多睡眠——他们的身体正在自我构建。`,
+                        analysisEn: [
+                            { role: '主语', text: 'This', cls: 'role-subject', translation: '这就是' },
+                            { role: '谓语(系动词)', text: 'is', cls: 'role-predicate', translation: '是' },
+                            { role: '表语(同位语从句)', text: 'why children need more sleep than adults', cls: 'role-complement', translation: '为什么孩子比成年人需要更多睡眠' },
+                            { role: '状语(补充说明)', text: 'their bodies are building themselves', cls: 'role-adverbial', translation: '因为他们的身体正在自我构建' }
+                        ]
+                    },
+                    {
+                        id: 7,
+                        en: `Sleep also strengthens the immune system.`,
+                        zh: `睡眠还能增强免疫系统。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Sleep', cls: 'role-subject', translation: '睡眠' },
+                            { role: '状语', text: 'also', cls: 'role-adverbial', translation: '还' },
+                            { role: '谓语', text: 'strengthens', cls: 'role-predicate', translation: '增强' },
+                            { role: '宾语', text: 'the immune system', cls: 'role-object', translation: '免疫系统' }
+                        ]
+                    },
+                    {
+                        id: 8,
+                        en: `Studies show that people who sleep fewer than six hours a night are more likely to catch a cold than those who sleep seven or eight hours.`,
+                        zh: `研究表明，每晚睡不足六小时的人比睡七八小时的人更容易感冒。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Studies', cls: 'role-subject', translation: '研究' },
+                            { role: '谓语', text: 'show', cls: 'role-predicate', translation: '表明' },
+                            { role: '宾语从句', text: 'that people who sleep fewer than six hours a night are more likely to catch a cold', cls: 'role-clause', translation: '每晚睡不足六小时的人更容易感冒' },
+                            { role: '比较状语从句', text: 'than those who sleep seven or eight hours', cls: 'role-clause', translation: '比那些睡七八小时的人' }
+                        ]
+                    },
+                    {
+                        id: 9,
+                        en: `Sleep affects the mind as well.`,
+                        zh: `睡眠同样会影响大脑。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Sleep', cls: 'role-subject', translation: '睡眠' },
+                            { role: '谓语', text: 'affects', cls: 'role-predicate', translation: '影响' },
+                            { role: '宾语', text: 'the mind', cls: 'role-object', translation: '大脑' },
+                            { role: '状语', text: 'as well', cls: 'role-adverbial', translation: '同样' }
+                        ]
+                    },
+                    {
+                        id: 10,
+                        en: `A well-rested person can focus better, solve problems faster, and make fewer mistakes.`,
+                        zh: `休息充分的人能更好地专注、更快地解决问题、犯更少的错误。`,
+                        analysisEn: [
+                            { role: '主语', text: 'A well-rested person', cls: 'role-subject', translation: '一个休息充分的人' },
+                            { role: '谓语', text: 'can focus better', cls: 'role-predicate', translation: '能更好地集中注意力' },
+                            { role: '谓语2', text: 'solve problems faster', cls: 'role-predicate', translation: '更快地解决问题' },
+                            { role: '谓语3', text: 'make fewer mistakes', cls: 'role-predicate', translation: '犯更少的错误' }
+                        ]
+                    },
+                    {
+                        id: 11,
+                        en: `In one experiment, students who stayed awake all night performed as poorly on a test as those who had drunk several glasses of wine.`,
+                        zh: `在一项实验中，整夜未睡的学生在一场测试中的表现，和喝了几杯酒的人一样差。`,
+                        analysisEn: [
+                            { role: '状语', text: 'In one experiment', cls: 'role-adverbial', translation: '在一项实验中' },
+                            { role: '主语', text: 'students who stayed awake all night', cls: 'role-subject', translation: '整夜没睡的学生' },
+                            { role: '谓语', text: 'performed as poorly on a test', cls: 'role-predicate', translation: '在一场测试中表现得同样差' },
+                            { role: '比较状语', text: 'as those who had drunk several glasses of wine', cls: 'role-clause', translation: '和喝了几杯酒的人一样' }
+                        ]
+                    },
+                    {
+                        id: 12,
+                        en: `Surprisingly, the tired students themselves did not realize how bad their performance was.`,
+                        zh: `令人惊讶的是，疲惫的学生自己并没有意识到他们的表现有多差。`,
+                        analysisEn: [
+                            { role: '衔接词', text: 'Surprisingly', cls: 'role-other', translation: '令人惊讶的是' },
+                            { role: '主语', text: 'the tired students themselves', cls: 'role-subject', translation: '疲惫的学生自己' },
+                            { role: '谓语', text: 'did not realize', cls: 'role-predicate', translation: '并没有意识到' },
+                            { role: '宾语从句', text: 'how bad their performance was', cls: 'role-clause', translation: '他们的表现有多差' }
+                        ]
+                    },
+                    {
+                        id: 13,
+                        en: `So how much sleep is enough?`,
+                        zh: `那么，多少睡眠才够呢？`,
+                        analysisEn: [
+                            { role: '衔接词', text: 'So', cls: 'role-other', translation: '那么' },
+                            { role: '主语', text: 'how much sleep', cls: 'role-subject', translation: '多少睡眠' },
+                            { role: '谓语(系动词)', text: 'is', cls: 'role-predicate', translation: '才' },
+                            { role: '表语', text: 'enough', cls: 'role-complement', translation: '够' }
+                        ]
+                    },
+                    {
+                        id: 14,
+                        en: `Most experts agree that teenagers need eight to ten hours a night.`,
+                        zh: `大多数专家认为，青少年每晚需要八到十个小时的睡眠。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Most experts', cls: 'role-subject', translation: '大多数专家' },
+                            { role: '谓语', text: 'agree', cls: 'role-predicate', translation: '认为' },
+                            { role: '宾语从句', text: 'that teenagers need eight to ten hours a night', cls: 'role-clause', translation: '青少年每晚需要八到十小时睡眠' }
+                        ]
+                    },
+                    {
+                        id: 15,
+                        en: `Yet surveys suggest that nearly half of high-school students sleep less than that on school nights, usually because of homework and phones.`,
+                        zh: `然而调查显示，近一半高中生在上学之夜睡得比这更少，通常是因为作业和手机。`,
+                        analysisEn: [
+                            { role: '衔接词', text: 'Yet', cls: 'role-other', translation: '然而' },
+                            { role: '主语', text: 'surveys', cls: 'role-subject', translation: '调查' },
+                            { role: '谓语', text: 'suggest', cls: 'role-predicate', translation: '显示' },
+                            { role: '宾语从句', text: 'that nearly half of high-school students sleep less than that on school nights', cls: 'role-clause', translation: '近一半高中生在上学之夜睡得比这更少' },
+                            { role: '状语', text: 'usually because of homework and phones', cls: 'role-adverbial', translation: '通常是因为作业和手机' }
+                        ]
+                    },
+                    {
+                        id: 16,
+                        en: `Scientists still do not know every secret of sleep.`,
+                        zh: `科学家们仍然并不了解睡眠的每一个秘密。`,
+                        analysisEn: [
+                            { role: '主语', text: 'Scientists', cls: 'role-subject', translation: '科学家们' },
+                            { role: '状语', text: 'still', cls: 'role-adverbial', translation: '仍然' },
+                            { role: '谓语', text: 'do not know', cls: 'role-predicate', translation: '并不了解' },
+                            { role: '宾语', text: 'every secret of sleep', cls: 'role-object', translation: '睡眠的每一个秘密' }
+                        ]
+                    },
+                    {
+                        id: 17,
+                        en: `But one thing is clear: sleep is not lost time.`,
+                        zh: `但有一点是清楚的：睡眠不是被浪费掉的时间。`,
+                        analysisEn: [
+                            { role: '连词(转折)', text: 'But', cls: 'role-other', translation: '但是' },
+                            { role: '主语', text: 'one thing', cls: 'role-subject', translation: '有一点' },
+                            { role: '谓语(系动词)', text: 'is', cls: 'role-predicate', translation: '是' },
+                            { role: '表语', text: 'clear', cls: 'role-complement', translation: '清楚的' },
+                            { role: '同位语从句', text: 'sleep is not lost time', cls: 'role-clause', translation: '睡眠不是被浪费掉的时间' }
+                        ]
+                    },
+                    {
+                        id: 18,
+                        en: `It is the body's way of getting ready for tomorrow.`,
+                        zh: `它是身体为明天做准备的方式。`,
+                        analysisEn: [
+                            { role: '主语', text: 'It', cls: 'role-subject', translation: '它' },
+                            { role: '谓语(系动词)', text: 'is', cls: 'role-predicate', translation: '是' },
+                            { role: '表语', text: 'the body\'s way of getting ready for tomorrow', cls: 'role-complement', translation: '身体为明天做准备的方式' }
+                        ]
+                    }
+                ]
+            },
+            // ===== 03 核心词汇速记 =====
+            {
+                title: '03 核心词汇速记',
+                sub: 'Key words from both passages (点击单词可发音)',
+                sentences: [
+                    {
+                        id: 1,
+                        en: `conservatory`,
+                        zh: `n. 音乐学院；（植物）温室。文中指莉莉任教的城市音乐学院。`,
+                        analysisEn: [
+                            { role: '词义', text: 'conservatory', cls: 'role-complement', translation: 'n. 音乐学院；温室' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        en: `applause`,
+                        zh: `n. 掌声；喝彩。文中指音乐会结束时响起的一片掌声。`,
+                        analysisEn: [
+                            { role: '词义', text: 'applause', cls: 'role-complement', translation: 'n. 掌声；喝彩' }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        en: `instruments`,
+                        zh: `n. 乐器（instrument 的复数）。文中指孩子们买不起的正规乐器。`,
+                        analysisEn: [
+                            { role: '词义', text: 'instruments', cls: 'role-complement', translation: 'n. 乐器（复数）' }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        en: `concert`,
+                        zh: `n. 音乐会。文中指学校举办的第一场音乐会。`,
+                        analysisEn: [
+                            { role: '词义', text: 'concert', cls: 'role-complement', translation: 'n. 音乐会' }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        en: `hormone`,
+                        zh: `n. 激素。文中指深度睡眠中帮助肌肉和骨骼生长的激素。`,
+                        analysisEn: [
+                            { role: '词义', text: 'hormone', cls: 'role-complement', translation: 'n. 激素' }
+                        ]
+                    },
+                    {
+                        id: 6,
+                        en: `immune`,
+                        zh: `adj. 免疫的。immune system 指免疫系统。`,
+                        analysisEn: [
+                            { role: '词义', text: 'immune', cls: 'role-complement', translation: 'adj. 免疫的' }
+                        ]
+                    },
+                    {
+                        id: 7,
+                        en: `experiment`,
+                        zh: `n. 实验。文中指让通宵学生做题的那项实验。`,
+                        analysisEn: [
+                            { role: '词义', text: 'experiment', cls: 'role-complement', translation: 'n. 实验' }
+                        ]
+                    },
+                    {
+                        id: 8,
+                        en: `repair`,
+                        zh: `n./v. 修复；修理。physical repair 指身体机能的修复。`,
+                        analysisEn: [
+                            { role: '词义', text: 'repair', cls: 'role-complement', translation: 'n./v. 修复；修理' }
+                        ]
+                    },
+                    {
+                        id: 9,
+                        en: `surveys`,
+                        zh: `n. 调查（survey 的复数/动词第三人称单数）。文中指对青少年睡眠时长的调查。`,
+                        analysisEn: [
+                            { role: '词义', text: 'surveys', cls: 'role-complement', translation: 'n. 调查' }
+                        ]
+                    },
+                    {
+                        id: 10,
+                        en: `mountains`,
+                        zh: `n. 山区；群山（mountain 的复数）。文中是那位音乐老师任教的小学所在之处。`,
+                        analysisEn: [
+                            { role: '词义', text: 'mountains', cls: 'role-complement', translation: 'n. 山区；群山' }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // 生词本存储（按文章分页独立存储）
+        let vocabulary = [];
+        let currentSection = 0;
+        function getStorageKey(idx) { return `readingplus2_vocab_${idx}`; }
+        function loadVocab() {
+            try { const d = localStorage.getItem(getStorageKey(currentSection)); vocabulary = d ? JSON.parse(d) : []; } catch { vocabulary = []; }
+        }
+        function saveVocab() { try { localStorage.setItem(getStorageKey(currentSection), JSON.stringify(vocabulary)); } catch { console.warn('浏览器存储不可用，生词仅在本次打开期间保存。'); } }
+
+        // TTS
+        let currentUtterance = null;
+        let currentSpeakBtn = null;
+        function resetSpeakBtn() {
+            if (currentSpeakBtn) { currentSpeakBtn.classList.remove('speaking'); currentSpeakBtn.textContent = currentSpeakBtn.dataset.originalIcon || '🔊'; }
+            currentSpeakBtn = null; currentUtterance = null;
+        }
+        function speak(text, lang = 'en-US', btn = null) {
+            if (!window.speechSynthesis) return;
+            // 如果正在朗读同一条内容，则停止
+            if (currentUtterance && currentSpeakBtn === btn) {
+                window.speechSynthesis.cancel();
+                resetSpeakBtn();
+                return;
+            }
+            window.speechSynthesis.cancel();
+            resetSpeakBtn();
+            const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 0.9; u.pitch = 1;
+            const v = window.speechSynthesis.getVoices();
+            const p = v.find(x => x.lang.startsWith(lang.split('-')[0]) && x.name.includes('Google')) || v.find(x => x.lang.startsWith(lang.split('-')[0])) || null;
+            if (p) u.voice = p;
+            if (btn) {
+                btn.dataset.originalIcon = btn.textContent;
+                btn.classList.add('speaking');
+                btn.textContent = '⏹';
+                currentSpeakBtn = btn;
+            }
+            u.onend = () => { resetSpeakBtn(); };
+            u.onerror = () => { resetSpeakBtn(); };
+            currentUtterance = u;
+            window.speechSynthesis.speak(u);
+        }
+        if (window.speechSynthesis) { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(); }
+
+        // 离线词义
+        const offlineWords = Object.assign(Object.create(null), {
+            the: '这／那（定冠词）', a: '一（不定冠词）', an: '一（不定冠词）', of: '……的', to: '到；向；用于不定式', and: '和；并且', in: '在……里', on: '在……上', at: '在；向', for: '为了；对于', with: '与；用', from: '来自；从', by: '由；通过', as: '作为；像', is: '是（be 的第三人称单数）', are: '是（be 的复数形式）', was: '是（be 的过去式）', were: '是（be 的过去式）', be: '是；成为', been: 'be 的过去分词', being: '存在；be 的现在分词', it: '它', its: '它的', this: '这；这个', that: '那；那个', these: '这些', those: '那些', they: '他们；它们', their: '他们的；它们的', we: '我们', our: '我们的', you: '你；你们', your: '你的；你们的', has: '有（have 的第三人称单数）', have: '有；已经', had: '有（have 的过去式）', not: '不；没有', but: '但是', or: '或者', can: '能够；可以', could: '能够；可能', will: '将；会', would: '将会；愿意', may: '可能；可以', more: '更多', most: '最多；大多数', many: '许多', new: '新的', first: '第一；首次', also: '也；而且', about: '关于；大约', into: '进入', than: '比', which: '哪一个；用于关系从句', who: '谁', what: '什么', when: '何时；当……时', where: '哪里', how: '如何', people: '人们', world: '世界', china: '中国', chinese: '中国的；中文；中国人', book: '书', books: '书（复数）', read: '阅读', reading: '阅读', paper: '纸；论文', print: '印刷', printed: '印刷的', map: '地图', maps: '地图（复数）', father: '父亲', mother: '母亲', village: '村庄', villages: '村庄（复数）', family: '家庭', friend: '朋友', child: '孩子', children: '孩子们', school: '学校', study: '学习；书房', student: '学生', students: '学生（复数）', teacher: '老师', time: '时间；次数', year: '年', years: '年（复数）', day: '天', night: '夜晚', home: '家', house: '房子', room: '房间', door: '门', box: '盒子', wooden: '木制的', pencil: '铅笔', light: '光；灯', lamp: '灯', river: '河流', mountain: '山', path: '小路', bridge: '桥', tree: '树', old: '老的；旧的', small: '小的', long: '长的', short: '短的', good: '好的', bad: '坏的', big: '大的', little: '小的', high: '高的', low: '低的', deep: '深的', slow: '慢的', quick: '快的', careful: '仔细的', difficult: '困难的', easy: '容易的', important: '重要的', different: '不同的', useful: '有用的', popular: '受欢迎的', convenient: '方便的', effective: '有效的', emotional: '情感的', social: '社会的', digital: '数字的', screen: '屏幕', phone: '手机', tablet: '平板', device: '设备', file: '文件', text: '文本', story: '故事', memory: '记忆', memories: '记忆（复数）', focus: '专注', attention: '注意力', distraction: '干扰', value: '价值', gift: '礼物', author: '作者', generation: '一代', understand: '理解', remember: '记得', believe: '相信', predict: '预测', disappear: '消失', continue: '继续', create: '创造', offer: '提供', help: '帮助', stay: '保持', break: '打破', carry: '携带', give: '给', sign: '签名', pass: '传递', remain: '保持', use: '使用', choose: '选择', enjoy: '享受', learn: '学习', study: '学习', know: '知道', think: '认为', say: '说', ask: '问', answer: '回答', find: '发现', open: '打开', close: '关闭', start: '开始', end: '结束', keep: '保持', lose: '丢失', walk: '走路', measure: '测量', draw: '画', copy: '抄写', reach: '到达', return: '返回', smile: '微笑', nod: '点头', search: '搜索', point: '指', hand: '递给', fall: '落下', become: '变成', grow: '成长', show: '展示', tend: '倾向于', invite: '招致', encourage: '鼓励', glance: '瞥一眼', scroll: '滚动', save: '节省', break: '打破', mean: '意味着', offer: '提供', expect: '期待', wonder: '想知道', matter: '要紧', belong: '属于', measure: '测量', search: '搜索', point: '指', hand: '递', fell: '跌倒；生病', ill: '生病的', hospital: '医院', brittle: '脆的', curl: '卷曲', faint: '模糊的', neat: '工整的', character: '字；角色', date: '日期', section: '部分', pond: '池塘', foundation: '地基', shift: '移动', habit: '习惯', team: '团队', county: '县', survey: '测量', navigation: '导航', satellite: '卫星', jewel: '珠宝', letter: '信件', stack: '一叠', yellowing: '泛黄的', scratch: '刮擦', fade: '褪色', ridge: '田埂', ditch: '沟渠', kerosene: '煤油', outsider: '外人', winding: '弯曲的', complete: '完整的', disband: '解散', living: '活的', ill: '生病的', sudden: '突然的', slowly: '缓慢地', quiet: '安静的', nod: '点头', mind: '头脑', village: '村庄'
+        });
+        const wordRequests = new Map();
+        let wordCache = Object.create(null);
+        try { const cached = JSON.parse(localStorage.getItem('readingplus_word_cache_v2') || '{}'); if (cached && typeof cached === 'object' && !Array.isArray(cached)) wordCache = Object.assign(Object.create(null), cached); } catch {}
+        function offlineWordInfo(word) {
+            const key = word.toLowerCase();
+            if (offlineWords[key]) return { translation: offlineWords[key], source: 'offline', phonetic: '', partOfSpeech: '' };
+            for (const article of articlesData) for (const sentence of article.sentences) for (const item of sentence.analysisEn || []) {
+                if (String(item.text || '').trim().toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, '') === key && /[\u3400-\u9fff]/.test(item.translation || '')) return { translation: item.translation, source: 'article', phonetic: '', partOfSpeech: '' };
+            }
+            return { translation: '', source: 'unavailable', phonetic: '', partOfSpeech: '' };
+        }
+        async function requestWordJSON(url) {
+            const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 6500);
+            try { const response = await fetch(url, { signal: controller.signal, credentials: 'omit' }); if (!response.ok) throw new Error('HTTP ' + response.status); return await response.json(); }
+            finally { clearTimeout(timer); }
+        }
+        function fetchWordInfo(word) {
+            const key = word.trim().toLowerCase();
+            const fallback = offlineWordInfo(key);
+            if (fallback.translation) return Promise.resolve(fallback);
+            if (wordCache[key]?.translation) return Promise.resolve({ ...wordCache[key], source: 'cache' });
+            if (wordRequests.has(key)) return wordRequests.get(key);
+            const request = (async () => {
+                const [translated, dictionary] = await Promise.allSettled([
+                    requestWordJSON('https://api.mymemory.translated.net/get?' + new URLSearchParams({ q: key, langpair: 'en|zh-CN' })),
+                    requestWordJSON('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(key))
+                ]);
+                let translation = '';
+                if (translated.status === 'fulfilled') {
+                    const data = translated.value; const text = String(data.responseData?.translatedText || '').trim();
+                    if (Number(data.responseStatus) === 200 && /[\u3400-\u9fff]/.test(text) && !/(MYMEMORY WARNING|QUERY LENGTH LIMIT|QUOTA|INVALID LANGUAGE)/i.test(text)) translation = text;
+                }
+                const entry = dictionary.status === 'fulfilled' && Array.isArray(dictionary.value) ? dictionary.value[0] : null;
+                const info = { translation, phonetic: entry?.phonetic || entry?.phonetics?.find(p => p.text)?.text || '', partOfSpeech: entry?.meanings?.[0]?.partOfSpeech || '', source: translation ? 'online' : 'unavailable' };
+                if (translation) { wordCache[key] = info; try { localStorage.setItem('readingplus_word_cache_v2', JSON.stringify(wordCache)); } catch {} }
+                return info;
+            })().finally(() => wordRequests.delete(key));
+            wordRequests.set(key, request); return request;
+        }
+
+        // 生词本操作
+        async function addWordWithInfo(word, lang = 'en') {
+            if (!word?.trim()) return false;
+            const section = currentSection, lo = word.toLowerCase();
+            let item = vocabulary.find(i => i.word.toLowerCase() === lo && i.lang === lang);
+            const added = !item;
+            if (!item) { item = { word: word.trim(), lang, ...offlineWordInfo(lo) }; vocabulary.push(item); saveVocab(); renderVocabUI(); updateBadge(); }
+            const info = await fetchWordInfo(word);
+            if (currentSection !== section || !vocabulary.includes(item)) return false;
+            Object.assign(item, { translation: info.translation || item.translation || '', phonetic: info.phonetic || item.phonetic || '', partOfSpeech: info.partOfSpeech || item.partOfSpeech || '', source: info.source });
+            saveVocab(); renderVocabUI(); updateBadge(); return added;
+        }
+        function removeWordByWord(word, lang = 'en') { const i = vocabulary.findIndex(x => x.word.toLowerCase() === word.toLowerCase() && x.lang === lang); if (i !== -1) { vocabulary.splice(i, 1); saveVocab(); renderVocabUI(); updateBadge(); return true; } return false; }
+        function clearVocab() { if (!vocabulary.length) return; if (confirm('确定要清空生词本吗？')) { vocabulary = []; saveVocab(); renderVocabUI(); updateBadge(); } }
+        function updateBadge() {
+            document.getElementById('vocabCount').textContent = vocabulary.length;
+            document.getElementById('panelCount').textContent = `(${vocabulary.length}个词)`;
+            const artNames = articlesData.map(a => String(a.title || '').replace(/^(\d+)\s*/, '$1'));
+            document.getElementById('vocabArticleLabel').textContent = `· ${artNames[currentSection] || ''}`;
+        }
+
+        // 渲染生词本
+        function renderVocabUI() {
+            const list = document.getElementById('vocabList');
+            if (!vocabulary.length) { list.innerHTML = '<div class="empty-vocab">✨ 还没有生词，点击英文单词试试吧</div>'; return; }
+            list.innerHTML = vocabulary.map((item, i) => `<div class="vocab-item"><span class="v-word">${item.word}</span>${item.phonetic ? `<span class="v-phonetic">${item.phonetic}</span>` : ''}${item.partOfSpeech ? `<span class="v-pos">${item.partOfSpeech}</span>` : ''}${item.translation ? `<span class="v-trans">${item.translation}</span>` : ''}<span class="v-lang">${item.lang === 'en' ? '🇬🇧' : '🇨🇳'}</span><button class="v-speak" data-word="${item.word}" data-lang="${item.lang}">🔊</button><button class="v-remove">✕</button></div>`).join('');
+            list.querySelectorAll('.v-speak').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); speak(b.dataset.word, b.dataset.lang === 'en' ? 'en-US' : 'zh-CN'); }));
+            list.querySelectorAll('.v-remove').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const w = b.closest('.vocab-item').querySelector('.v-word').textContent; removeWordByWord(w, 'en'); }));
+        }
+
+        // 渲染结构卡片
+        function renderStructureCards(a) {
+            if (!a?.length) return '<div style="color:#7a8a9a;padding:10px 0;">暂无结构分析</div>';
+            return '<div class="constituent-cards">' + a.map(i => `<div class="constituent-card ${i.cls || 'role-other'}"><span class="role-label">${i.role || '成分'}</span><div class="en-text">${i.text || ''}</div><div class="zh-text"><span class="zh-label">译</span> ${i.translation || '（待补充）'}</div></div>`).join('') + '</div>';
+        }
+
+        // 渲染句子
+        function wrapWords(text, type) {
+            if (type === 'en') return text.split(/\s+/).map(t => { const c = t.replace(/[^a-zA-Z']/g, ''); return c ? `<span class="clickable-word" data-word="${c}" data-lang="en">${t}</span>` : t; }).join(' ');
+            return text.split('').map(ch => { if (!ch.trim()) return ch; if (/[，。、；：！？""''（）\u3000]/.test(ch)) return ch; return `<span class="clickable-word" data-word="${ch}" data-lang="zh" style="pointer-events:none;cursor:default;">${ch}</span>`; }).join('');
+        }
+        function renderSentence(s) {
+            return `<div class="sentence-card" data-id="${s.id}">
+                <div class="card-header">
+                    <div class="s-number">${s.id}</div>
+                    <div class="text-group">
+                        <div class="sentence-row">
+                            <div class="sentence-text text-en">${wrapWords(s.en, 'en')}</div>
+                            <button class="speak-btn" data-speak-lang="en" data-speak-text="${s.en.replace(/"/g, '&quot;')}" title="朗读英文句子" aria-label="朗读英文句子">🔊</button>
+                        </div>
+                        <div class="sentence-row">
+                            <div class="sentence-text text-zh">${wrapWords(s.zh, 'zh')}</div>
+                            <button class="speak-btn" data-speak-lang="zh" data-speak-text="${s.zh.replace(/"/g, '&quot;')}" title="朗读中文句子" aria-label="朗读中文句子">🔊</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="structure-area"><div class="structure-title"><span class="lang-en">🧩 英文结构（卡片式）</span><span class="badge">${s.analysisEn.length} 个成分</span></div>${renderStructureCards(s.analysisEn)}</div>
+            </div>`;
+        }
+
+        // 分页
+        function renderSection(idx) {
+            currentSection = idx;
+            loadVocab();
+            renderVocabUI();
+            updateBadge();
+            const art = articlesData[idx];
+            document.getElementById('sentencesContainer').innerHTML = `<div class="section-header"><div class="article-kicker">ARTICLE ${String(idx + 1).padStart(2, '0')} / ${articlesData.length} <span>${art.sentences.length} 个精读句子</span></div><h2>${art.title}</h2><div class="section-sub">${art.sub}</div></div>` + art.sentences.map(s => renderSentence(s)).join('');
+            document.querySelectorAll('.section-tab').forEach((t, i) => { t.classList.toggle('active', i === idx); t.setAttribute('aria-current', i === idx ? 'page' : 'false'); });
+            setTimeout(restoreRedMarks, 50); window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        // 动态渲染文章目录标签（数量由 articlesData 决定）
+        function renderSectionTabs() {
+            const nav = document.getElementById('sectionNav');
+            const empty = document.getElementById('directoryEmpty');
+            const tabsHtml = articlesData.map((art, i) => {
+                const num = String(i + 1).padStart(2, '0');
+                const label = String(art.title || '').replace(/^\d+\s*/, '') || `文章 ${num}`;
+                const color = 'c' + ((i % 11) + 1);
+                return `<div class="section-tab${i === 0 ? ' active' : ''}" data-section="${i}"><span class="tab-num ${color}">${num}</span>${label}</div>`;
+            }).join('');
+            empty.insertAdjacentHTML('beforebegin', tabsHtml);
+            document.getElementById('directoryCount').textContent = `${articlesData.length} ARTICLES`;
+            document.getElementById('heroCount').textContent = articlesData.length;
+            document.getElementById('footerCount').textContent = articlesData.length;
+        }
+        renderSectionTabs();
+        document.getElementById('sectionNav').addEventListener('click', e => { const tab = e.target.closest('.section-tab'); if (tab) renderSection(parseInt(tab.dataset.section)); });
+        renderSection(0);
+
+        // 句子朗读按钮事件
+        document.getElementById('sentencesContainer').addEventListener('click', function (e) {
+            const btn = e.target.closest('.speak-btn');
+            if (btn) {
+                e.stopPropagation();
+                const lang = btn.dataset.speakLang;
+                const text = btn.dataset.speakText;
+                speak(text, lang === 'en' ? 'en-US' : 'zh-CN', btn);
+            }
+        });
+
+        // 阅读界面控制
+        document.querySelectorAll('.section-tab').forEach(tab => {
+            tab.setAttribute('role', 'button'); tab.tabIndex = 0;
+            tab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); renderSection(Number(tab.dataset.section)); } });
+        });
+        document.getElementById('articleSearch').addEventListener('input', function () {
+            const query = this.value.trim().toLowerCase(); let count = 0;
+            document.querySelectorAll('.section-tab').forEach(tab => { const match = tab.textContent.toLowerCase().includes(query); tab.style.display = match ? '' : 'none'; if (match) count++; });
+            document.getElementById('directoryEmpty').hidden = count > 0;
+        });
+        [['translationToggle', 'hide-translations'], ['structureToggle', 'hide-structures']].forEach(([id, cls]) => {
+            document.getElementById(id).addEventListener('click', function () { const hidden = document.body.classList.toggle(cls); this.setAttribute('aria-pressed', String(!hidden)); });
+        });
+        let readingSize = 20;
+        document.getElementById('fontDecrease').addEventListener('click', () => { readingSize = Math.max(16, readingSize - 1); document.documentElement.style.setProperty('--reading-size', readingSize + 'px'); });
+        document.getElementById('fontIncrease').addEventListener('click', () => { readingSize = Math.min(28, readingSize + 1); document.documentElement.style.setProperty('--reading-size', readingSize + 'px'); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); hideTooltip(); window.speechSynthesis && window.speechSynthesis.cancel(); resetSpeakBtn(); } });
+
+        // Tooltip
+        const tooltip = document.getElementById('wordTooltip'); let tooltipTimeout = null, tooltipRequest = 0;
+        async function showTooltip(word, rect) {
+            const token = ++tooltipRequest; clearTimeout(tooltipTimeout);
+            tooltip.textContent = word + ' · 正在查询词义…';
+            tooltip.style.left = Math.max(155, Math.min(window.innerWidth - 155, rect.left + rect.width / 2)) + 'px';
+            tooltip.style.top = Math.max(10, rect.top - 46) + 'px'; tooltip.style.display = 'block';
+            const info = await fetchWordInfo(word);
+            if (token !== tooltipRequest) return;
+            const labels = { offline: '本地词典', article: '原文释义', cache: '缓存', online: '在线翻译' };
+            tooltip.textContent = info.translation ? word + ' · ' + info.translation + '（' + labels[info.source] + '）' : word + ' · 已收藏；网络词典暂不可用，暂无离线释义';
+            tooltip.title = tooltip.textContent;
+            tooltip.style.maxWidth = Math.min(360, window.innerWidth - 24) + 'px'; tooltip.style.whiteSpace = 'normal';
+            tooltip.style.left = Math.max(tooltip.offsetWidth / 2 + 12, Math.min(window.innerWidth - tooltip.offsetWidth / 2 - 12, rect.left + rect.width / 2)) + 'px';
+            tooltipTimeout = setTimeout(() => { if (token === tooltipRequest) tooltip.style.display = 'none'; }, 6500);
+        }
+        function hideTooltip() { tooltipRequest++; tooltip.style.display = 'none'; clearTimeout(tooltipTimeout); }
+        document.addEventListener('click', e => { if (!e.target.closest('.clickable-word') && !e.target.closest('.speak-btn')) hideTooltip(); });
+
+        // 单词交互
+        document.getElementById('sentencesContainer').addEventListener('click', async function (e) {
+            if (e.target.closest('.speak-btn')) return;
+            const t = e.target.closest('.clickable-word'); if (!t) return;
+            const word = t.dataset.word, lang = t.dataset.lang; if (!word || lang !== 'en') return;
+            speak(word, 'en-US');
+            const exists = vocabulary.some(i => i.word.toLowerCase() === word.toLowerCase() && i.lang === lang);
+            if (exists) { t.classList.remove('en-clicked', 'added'); removeWordByWord(word, lang); hideTooltip(); }
+            else { t.classList.add('en-clicked'); showTooltip(word, t.getBoundingClientRect()); const added = await addWordWithInfo(word, lang); if (added) { t.classList.add('added'); setTimeout(() => t.classList.remove('added'), 600); } }
+        });
+        function restoreRedMarks() { document.querySelectorAll('.clickable-word[data-lang="en"]').forEach(el => { if (vocabulary.some(i => i.word.toLowerCase() === el.dataset.word.toLowerCase() && i.lang === 'en')) el.classList.add('en-clicked'); }); }
+
+        // 朗读全部
+        function speakAllVocab() { if (!vocabulary.length) return; let d = 0; vocabulary.forEach(item => { setTimeout(() => speak(item.word, 'en-US'), d); d += 1500; if (item.translation?.trim()) { setTimeout(() => speak(item.translation, 'zh-CN'), d); d += 1500; } else d += 200; }); }
+        document.getElementById('speakAllVocabBtn').addEventListener('click', speakAllVocab);
+        document.getElementById('modalSpeakAllBtn').addEventListener('click', speakAllVocab);
+
+        // 工具栏
+        document.getElementById('toggleVocabPanelBtn').addEventListener('click', function () { const p = document.getElementById('vocabPanel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; this.textContent = p.style.display === 'none' ? '📂 展开面板' : '📂 收起面板'; });
+        document.getElementById('clearVocabBtn').addEventListener('click', clearVocab);
+
+        // 朗读全文中文
+        document.getElementById('speakFullZhBtn').addEventListener('click', function () {
+            if (!window.speechSynthesis) return;
+            const btn = this;
+            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); btn.textContent = '🗣️ 朗读全文中文'; btn.style.background = ''; btn.style.color = ''; resetSpeakBtn(); return; }
+            const art = articlesData[currentSection];
+            if (!art) return;
+            const allZh = art.sentences.map(s => s.zh).join('。');
+            btn.textContent = '⏹ 停止朗读'; btn.style.background = '#5a2a2a'; btn.style.color = '#ffa8a8';
+            const u = new SpeechSynthesisUtterance(allZh);
+            u.lang = 'zh-CN'; u.rate = 0.95; u.pitch = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const zhVoice = voices.find(v => v.lang.startsWith('zh') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('zh')) || null;
+            if (zhVoice) u.voice = zhVoice;
+            u.onend = function () { btn.textContent = '🗣️ 朗读全文中文'; btn.style.background = ''; btn.style.color = ''; };
+            u.onerror = function () { btn.textContent = '🗣️ 朗读全文中文'; btn.style.background = ''; btn.style.color = ''; };
+            window.speechSynthesis.speak(u);
+        });
+
+        // 导出全部生词本
+        document.getElementById('exportAllVocabBtn').addEventListener('click', function () {
+            const artNames = articlesData.map(a => String(a.title || '').replace(/\s+/g, '_'));
+            let allVocab = [];
+            for (let i = 0; i < articlesData.length; i++) {
+                try {
+                    const d = localStorage.getItem(getStorageKey(i));
+                    if (d) {
+                        const words = JSON.parse(d);
+                        words.forEach(w => allVocab.push({ ...w, article: artNames[i] || `文章${i}` }));
+                    }
+                } catch {}
+            }
+            if (!allVocab.length) { alert('所有文章的生词本都是空的！'); return; }
+
+            let csv = '\uFEFF单词,音标,词性,翻译,来源文章\n';
+            allVocab.forEach(item => {
+                csv += `"${item.word}","${item.phonetic || ''}","${item.partOfSpeech || ''}","${item.translation || ''}","${item.article}"\n`;
+            });
+
+            let txt = '═══════════════════════════════════════\n';
+            txt += '    📖 Reading Plus 热点时文 · 全部生词\n';
+            txt += '═══════════════════════════════════════\n\n';
+            const grouped = {};
+            allVocab.forEach(item => {
+                if (!grouped[item.article]) grouped[item.article] = [];
+                grouped[item.article].push(item);
+            });
+            for (const [art, words] of Object.entries(grouped)) {
+                txt += `▌ ${art.replace(/_/g, ' ')}\n`;
+                txt += '───────────────────────────────────\n';
+                words.forEach(w => {
+                    txt += `  ${w.word}`;
+                    if (w.phonetic) txt += `  ${w.phonetic}`;
+                    if (w.partOfSpeech) txt += `  [${w.partOfSpeech}]`;
+                    if (w.translation) txt += `  ${w.translation}`;
+                    txt += '\n';
+                });
+                txt += '\n';
+            }
+            txt += `═══════════════════════════════════════\n`;
+            txt += `共 ${allVocab.length} 个生词，来自 ${Object.keys(grouped).length} 篇文章\n`;
+            txt += `导出时间：${new Date().toLocaleString('zh-CN')}\n`;
+
+            function download(content, filename, type) {
+                const blob = new Blob([content], { type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            download(txt, 'ReadingPlus_全部生词.txt', 'text/plain;charset=utf-8');
+            setTimeout(() => download(csv, 'ReadingPlus_全部生词.csv', 'text/csv;charset=utf-8'), 500);
+
+            this.textContent = '✅ 已导出';
+            setTimeout(() => { this.textContent = '📦 导出全部生词'; }, 2000);
+        });
+        document.getElementById('generateVocabPageBtn').addEventListener('click', function () {
+            const modal = document.getElementById('vocabModal'), grid = document.getElementById('modalVocabGrid');
+            if (!vocabulary.length) { grid.innerHTML = '<div style="padding:20px;color:#7a8a9a;">📭 生词本还是空的，快去添加单词吧！</div>'; modal.classList.add('active'); return; }
+            grid.innerHTML = vocabulary.map(item => `<div class="m-item"><span class="m-word">${item.word}</span>${item.phonetic ? `<span class="m-phonetic">${item.phonetic}</span>` : ''}${item.partOfSpeech ? `<span class="m-pos">${item.partOfSpeech}</span>` : ''}${item.translation ? `<span class="m-trans">${item.translation}</span>` : ''}<span class="m-lang">${item.lang === 'en' ? 'EN' : '中文'}</span><button class="m-speak" data-word="${item.word}" data-lang="${item.lang}">🔊 朗读</button></div>`).join('');
+            grid.querySelectorAll('.m-speak').forEach(b => b.addEventListener('click', function (e) { e.stopPropagation(); speak(this.dataset.word, this.dataset.lang === 'en' ? 'en-US' : 'zh-CN'); }));
+            modal.classList.add('active');
+        });
+        function closeModal() { document.getElementById('vocabModal').classList.remove('active'); }
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+        document.getElementById('vocabModal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+
+        // 初始化
+        renderVocabUI(); updateBadge();
+        document.getElementById('vocabPanel').style.display = 'block';
+        document.getElementById('toggleVocabPanelBtn').textContent = '📂 收起面板';
+    </script>
+</body>
+</html>
