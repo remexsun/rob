@@ -519,14 +519,22 @@ function ghRepo(){
   if(!/\.github\.io$/i.test(host)) return null;
   const owner=host.split('.')[0];
   const segs=location.pathname.split('/').filter(Boolean);
-  return owner+'/'+(segs.length>1?segs[0]:host);
+  if(segs.length && /\.html?$/i.test(segs[segs.length-1])) segs.pop();
+  return owner+'/'+(segs.length?segs[0]:host);
 }
+function ghToken(){ return (localStorage.getItem('rex_gh_token')||'').trim(); }
 function ghSaveRepo(){
   const v=(document.getElementById('gh-repo')?.value||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');
-  if(!/^[\w.-]+\/[\w.-]+$/.test(v)){ alert('请填 owner/repo，例如 remexsun/my-pages'); return; }
+  if(!/^[\w.-]+\/[\w.-]+$/.test(v)){ alert('请填 owner/repo，例如 remexsun/rob'); return; }
   localStorage.setItem('rex_gh_repo',v);
-  dataRefresh();
+  dataRefresh(true);
 }
+function ghSaveToken(){
+  const v=(document.getElementById('gh-token')?.value||'').trim();
+  if(v) localStorage.setItem('rex_gh_token',v); else localStorage.removeItem('rex_gh_token');
+  dataRefresh(true);
+}
+
 async function renderData(){
   const c=document.getElementById('content');
   c.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -534,45 +542,19 @@ async function renderData(){
         <h1 style="margin-bottom:8px">📊 数据</h1>
         <p class="sub" style="margin-bottom:0">GitHub 上与本页同级的 HTML 页面，点击直接打开</p>
       </div>
-      <button class="btn ghost" onclick="dataRefresh()" style="padding:7px 14px;font-size:13px;margin-top:2px">刷新</button>
+      <button class="btn ghost" onclick="dataRefresh(true)" style="padding:7px 14px;font-size:13px;margin-top:2px">刷新</button>
     </div>
     <div style="height:20px"></div>
     <div id="data-list"><p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">加载中…</p></div>`;
   dataRefresh();
 }
-async function dataRefresh(){
-  const el=document.getElementById('data-list'); if(!el)return;
-  const repo=ghRepo();
-  if(!repo){
-    el.innerHTML=`<div class="card" style="max-width:520px">
-      <h3>本地打开时读不到 GitHub 仓库</h3>
-      <p>部署到 GitHub Pages 后会自动识别仓库。想在本地预览，填一下仓库名即可：</p>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <input id="gh-repo" placeholder="owner/repo，例如 remexsun/my-pages" value="${escAttr(localStorage.getItem('rex_gh_repo')||'')}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 11px;font:inherit;font-size:13px;outline:none">
-        <button class="btn" onclick="ghSaveRepo()" style="padding:8px 16px;font-size:13px">加载</button>
-      </div>
-    </div>`;
-    return;
-  }
-  let files;
-  try{
-    const r=await fetch(`https://api.github.com/repos/${repo}/contents`,{headers:{'Accept':'application/vnd.github+json'}});
-    const data=await r.json();
-    if(!r.ok) throw new Error((data&&data.message)||('HTTP '+r.status));
-    if(!Array.isArray(data)) throw new Error('返回格式异常');
-    files=data;
-  }catch(e){
-    el.innerHTML=`<p style="color:var(--danger);font-size:14px">读取 ${esc(repo)} 失败：${esc(e.message)}<br><span style="font-size:12px;color:var(--text2)">仓库需要是公开的，且读取的是根目录</span></p>`;
-    return;
-  }
+
+function ghPick(list){
   const self=(location.pathname.split('/').pop()||'').toLowerCase();
-  const pages=files.filter(f=>f.type==='file' && /\.html?$/i.test(f.name) && f.name.toLowerCase()!=='index.html' && f.name.toLowerCase()!==self)
+  return (list||[]).filter(f=>f.type!=='dir' && f.name && /\.html?$/i.test(f.name) && f.name.toLowerCase()!=='index.html' && f.name.toLowerCase()!==self)
                    .sort((a,b)=>a.name.localeCompare(b.name));
-  if(!pages.length){
-    el.innerHTML='<p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">该目录里除了本页还没有别的 HTML 文件</p>';
-    return;
-  }
-  el.innerHTML=pages.map(f=>`
+}
+function ghCards(pages){  return pages.map(f=>`
     <a href="./${encodeURIComponent(f.name)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;color:var(--text)">
       <span style="font-size:24px">🌐</span>
       <div style="flex:1;min-width:0">
@@ -581,7 +563,94 @@ async function dataRefresh(){
       </div>
       <span style="color:var(--accent);font-size:13px;white-space:nowrap">打开 →</span>
     </a>`).join('');
-  el.innerHTML += `<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
+}
+
+function ghFail(msg,repo){
+  const el=document.getElementById('data-list'); if(!el)return;
+  el.innerHTML=`<div class="card" style="max-width:560px">
+      <h3>读取 ${esc(repo)} 失败</h3>
+      <p>${esc(msg)}</p>
+      <p style="font-size:12px;color:var(--text2);margin-top:8px">仓库需要是公开的；GitHub 公开接口每小时 60 次额度，用完要等下一小时，或填一个 token 提高额度（只存在这台浏览器里）。</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn" onclick="dataRefresh(true)" style="padding:7px 16px;font-size:13px">重试</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <input id="gh-token" placeholder="GitHub token（可选，填了额度更高）" value="${escAttr(ghToken())}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 11px;font:inherit;font-size:12px;outline:none">
+        <button class="btn ghost" onclick="ghSaveToken()" style="padding:7px 14px;font-size:13px">保存并重试</button>
+      </div>
+    </div>`;
+}
+
+async function dataRefresh(force){
+  const el=document.getElementById('data-list'); if(!el)return;
+  const repo=ghRepo();
+  if(!repo){
+    el.innerHTML=`<div class="card" style="max-width:520px">
+      <h3>本地打开时读不到 GitHub 仓库</h3>
+      <p>部署到 GitHub Pages 后会自动识别仓库。想在本地预览，填一下仓库名即可：</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <input id="gh-repo" placeholder="owner/repo，例如 remexsun/rob" value="${escAttr(localStorage.getItem('rex_gh_repo')||'')}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 11px;font:inherit;font-size:13px;outline:none">
+        <button class="btn" onclick="ghSaveRepo()" style="padding:8px 16px;font-size:13px">加载</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const KEY='rex_gh_cache_'+repo;
+  let cache=null; try{ cache=JSON.parse(localStorage.getItem(KEY)||'null'); }catch(_){}
+  let items=null, err=null;
+
+  // 10 分钟内直接用缓存，避免把 GitHub 每小时 60 次的额度耗光
+  if(!force && cache && Array.isArray(cache.items) && Date.now()-(cache.t||0) < 10*60*1000){
+    const pages=ghPick(cache.items);
+    if(pages.length){
+      el.innerHTML=ghCards(pages)+`<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录 ・ ${new Date(cache.t).toLocaleTimeString('zh-CN')} 缓存，点「刷新」取最新</p>`;
+      return;
+    }
+  }
+
+  try{
+    const headers={'Accept':'application/vnd.github+json'};
+    const tk=ghToken(); if(tk) headers['Authorization']='Bearer '+tk;
+    const r=await fetch(`https://api.github.com/repos/${repo}/contents`,{headers});
+    const txt=await r.text();
+    if(!r.ok){
+      let msg='HTTP '+r.status;
+      try{ msg=(JSON.parse(txt)||{}).message||msg; }catch(_){}
+      const reset=parseInt(r.headers.get('x-ratelimit-reset')||'0',10);
+      if(r.status===403 && /rate limit/i.test(msg)){
+        const mins=reset?Math.max(1,Math.round((reset*1000-Date.now())/60000)):0;
+        msg='GitHub 公开接口每小时 60 次的额度用完了'+(mins?('，约 '+mins+' 分钟后恢复'):'');
+      }
+      throw new Error(msg);
+    }
+    const data=JSON.parse(txt);
+    if(!Array.isArray(data)) throw new Error('返回格式异常');
+    items=data.filter(f=>f.type==='file' && /\.html?$/i.test(f.name||''));
+    try{ localStorage.setItem(KEY,JSON.stringify({t:Date.now(),items:items})); }catch(_){}
+  }catch(e){ err=e; }
+
+  if(items){
+    const pages=ghPick(items);
+    if(!pages.length){
+      el.innerHTML=`<p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">该目录里除了本页还没有别的 HTML 文件</p>
+        <p style="color:var(--text2);font-size:11px;text-align:center">来源：github.com/${esc(repo)} 根目录</p>`;
+      return;
+    }
+    el.innerHTML=ghCards(pages)+`<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
+    return;
+  }
+
+  if(cache && Array.isArray(cache.items) && cache.items.length){
+    const pages=ghPick(cache.items);
+    const when=new Date(cache.t).toLocaleString('zh-CN');
+    el.innerHTML=`<p style="color:var(--danger);font-size:12px;margin-bottom:12px">读取失败：${esc(err&&err.message||'')}　（下面显示 ${when} 的缓存）</p>`
+      + ghCards(pages)
+      + `<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
+    return;
+  }
+
+  ghFail(err&&err.message||'未知错误',repo);
 }
 
 /* ===== 文件管理（Supabase Storage rob2） ===== */
