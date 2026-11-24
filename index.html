@@ -172,20 +172,32 @@ const DEFAULT_NAVS = [
   { id: 2, icon: '💬', name: '留言簿', content: '__GUESTBOOK__' },
   { id: 3, icon: '⭐', name: '收藏夹', content: '__BOOKMARKS__' },
   { id: 4, icon: '📁', name: '文件', content: '__FILES__' },
-  { id: 5, icon: '📊', name: '数据', content: '__DATA__' },
+  { id: 5, icon: '📤', name: '上传新页面', content: '__UPLOAD__' },
 ];
 
 let navs = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || DEFAULT_NAVS;
-// 首页只保留 WELCOME，清掉旧版说明文案；「数据」栏目改成 HTML 页面索引
+// 首页只保留 WELCOME，清掉旧版说明文案
 navs.forEach((n,i)=>{
   if(typeof n.content==='string' && (n.content.includes('欢迎来到 Rex') || n.content.includes('点击左下角「管理员」按钮'))){
     n.content = DEFAULT_NAVS[0].content; save();
-  } else if(n.id===5 && n.name==='数据' && n.content!=='__DATA__'){
-    n.content = '__DATA__'; save();
   }
 });
+// 上传栏目定名「上传新页面」；其余名叫「高中」的栏目改名为「英语世界」
+navs.forEach(n=>{
+  if(n.content==='__UPLOAD__' && n.name!=='上传新页面'){ n.name='上传新页面'; n.icon='📤'; save(); }
+});
+let renamed=false;
+navs.forEach(n=>{
+  if(n.name==='高中'){ n.name='英语世界'; renamed=true; }
+});
+if(renamed) save();
+// 删掉旧的「数据」栏目（id 5 且名为数据）
+if(navs.some(n=>n.id===5 && n.name==='数据')){
+  navs = navs.filter(n=>!(n.id===5 && n.name==='数据'));
+  save();
+}
 // 确保特殊栏目始终存在
-const SPECIAL = {2:'__GUESTBOOK__', 3:'__BOOKMARKS__', 4:'__FILES__'};
+const SPECIAL = {2:'__GUESTBOOK__', 3:'__BOOKMARKS__', 4:'__FILES__', 5:'__UPLOAD__'};
 Object.entries(SPECIAL).forEach(([id,marker])=>{
   id=+id;
   if(!navs.find(n=>n.content===marker)){
@@ -216,7 +228,7 @@ function renderContent(){
   if(n.content === '__GUESTBOOK__'){ renderGuestbook(); }
   else if(n.content === '__BOOKMARKS__'){ renderBookmarks(); }
   else if(n.content === '__FILES__'){ renderFiles(); }
-  else if(n.content === '__DATA__'){ renderData(); }
+  else if(n.content === '__UPLOAD__'){ renderUpload(); }
   else { document.getElementById('content').innerHTML = n.content; }
 }
 
@@ -511,148 +523,6 @@ async function bmDelete(id){
   try{await bmRemove(id);bmRefresh();}catch(e){alert('删除失败：'+e.message);}
 }
 
-/* ===== 数据：GitHub 仓库根目录（与本页同级）的 HTML 页面 ===== */
-function ghRepo(){
-  const manual=(localStorage.getItem('rex_gh_repo')||'').trim();
-  if(/^[\w.-]+\/[\w.-]+$/.test(manual)) return manual;
-  const host=location.hostname;
-  if(!/\.github\.io$/i.test(host)) return null;
-  const owner=host.split('.')[0];
-  const segs=location.pathname.split('/').filter(Boolean);
-  if(segs.length && /\.html?$/i.test(segs[segs.length-1])) segs.pop();
-  return owner+'/'+(segs.length?segs[0]:host);
-}
-function ghToken(){ return (localStorage.getItem('rex_gh_token')||'').trim(); }
-function ghSaveRepo(){
-  const v=(document.getElementById('gh-repo')?.value||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');
-  if(!/^[\w.-]+\/[\w.-]+$/.test(v)){ alert('请填 owner/repo，例如 remexsun/rob'); return; }
-  localStorage.setItem('rex_gh_repo',v);
-  dataRefresh(true);
-}
-function ghSaveToken(){
-  const v=(document.getElementById('gh-token')?.value||'').trim();
-  if(v) localStorage.setItem('rex_gh_token',v); else localStorage.removeItem('rex_gh_token');
-  dataRefresh(true);
-}
-
-async function renderData(){
-  const c=document.getElementById('content');
-  c.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div>
-        <h1 style="margin-bottom:8px">📊 数据</h1>
-        <p class="sub" style="margin-bottom:0">GitHub 上与本页同级的 HTML 页面，点击直接打开</p>
-      </div>
-      <button class="btn ghost" onclick="dataRefresh(true)" style="padding:7px 14px;font-size:13px;margin-top:2px">刷新</button>
-    </div>
-    <div style="height:20px"></div>
-    <div id="data-list"><p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">加载中…</p></div>`;
-  dataRefresh();
-}
-
-function ghPick(list){
-  const self=(location.pathname.split('/').pop()||'').toLowerCase();
-  return (list||[]).filter(f=>f.type!=='dir' && f.name && /\.html?$/i.test(f.name) && f.name.toLowerCase()!=='index.html' && f.name.toLowerCase()!==self)
-                   .sort((a,b)=>a.name.localeCompare(b.name));
-}
-function ghCards(pages){  return pages.map(f=>`
-    <a href="./${encodeURIComponent(f.name)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;color:var(--text)">
-      <span style="font-size:24px">🌐</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</div>
-        <div style="color:var(--text2);font-size:11px;margin-top:2px">${fmtSize(f.size)}</div>
-      </div>
-      <span style="color:var(--accent);font-size:13px;white-space:nowrap">打开 →</span>
-    </a>`).join('');
-}
-
-function ghFail(msg,repo){
-  const el=document.getElementById('data-list'); if(!el)return;
-  el.innerHTML=`<div class="card" style="max-width:560px">
-      <h3>读取 ${esc(repo)} 失败</h3>
-      <p>${esc(msg)}</p>
-      <p style="font-size:12px;color:var(--text2);margin-top:8px">仓库需要是公开的；GitHub 公开接口每小时 60 次额度，用完要等下一小时，或填一个 token 提高额度（只存在这台浏览器里）。</p>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn" onclick="dataRefresh(true)" style="padding:7px 16px;font-size:13px">重试</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <input id="gh-token" placeholder="GitHub token（可选，填了额度更高）" value="${escAttr(ghToken())}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 11px;font:inherit;font-size:12px;outline:none">
-        <button class="btn ghost" onclick="ghSaveToken()" style="padding:7px 14px;font-size:13px">保存并重试</button>
-      </div>
-    </div>`;
-}
-
-async function dataRefresh(force){
-  const el=document.getElementById('data-list'); if(!el)return;
-  const repo=ghRepo();
-  if(!repo){
-    el.innerHTML=`<div class="card" style="max-width:520px">
-      <h3>本地打开时读不到 GitHub 仓库</h3>
-      <p>部署到 GitHub Pages 后会自动识别仓库。想在本地预览，填一下仓库名即可：</p>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <input id="gh-repo" placeholder="owner/repo，例如 remexsun/rob" value="${escAttr(localStorage.getItem('rex_gh_repo')||'')}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 11px;font:inherit;font-size:13px;outline:none">
-        <button class="btn" onclick="ghSaveRepo()" style="padding:8px 16px;font-size:13px">加载</button>
-      </div>
-    </div>`;
-    return;
-  }
-
-  const KEY='rex_gh_cache_'+repo;
-  let cache=null; try{ cache=JSON.parse(localStorage.getItem(KEY)||'null'); }catch(_){}
-  let items=null, err=null;
-
-  // 10 分钟内直接用缓存，避免把 GitHub 每小时 60 次的额度耗光
-  if(!force && cache && Array.isArray(cache.items) && Date.now()-(cache.t||0) < 10*60*1000){
-    const pages=ghPick(cache.items);
-    if(pages.length){
-      el.innerHTML=ghCards(pages)+`<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录 ・ ${new Date(cache.t).toLocaleTimeString('zh-CN')} 缓存，点「刷新」取最新</p>`;
-      return;
-    }
-  }
-
-  try{
-    const headers={'Accept':'application/vnd.github+json'};
-    const tk=ghToken(); if(tk) headers['Authorization']='Bearer '+tk;
-    const r=await fetch(`https://api.github.com/repos/${repo}/contents`,{headers});
-    const txt=await r.text();
-    if(!r.ok){
-      let msg='HTTP '+r.status;
-      try{ msg=(JSON.parse(txt)||{}).message||msg; }catch(_){}
-      const reset=parseInt(r.headers.get('x-ratelimit-reset')||'0',10);
-      if(r.status===403 && /rate limit/i.test(msg)){
-        const mins=reset?Math.max(1,Math.round((reset*1000-Date.now())/60000)):0;
-        msg='GitHub 公开接口每小时 60 次的额度用完了'+(mins?('，约 '+mins+' 分钟后恢复'):'');
-      }
-      throw new Error(msg);
-    }
-    const data=JSON.parse(txt);
-    if(!Array.isArray(data)) throw new Error('返回格式异常');
-    items=data.filter(f=>f.type==='file' && /\.html?$/i.test(f.name||''));
-    try{ localStorage.setItem(KEY,JSON.stringify({t:Date.now(),items:items})); }catch(_){}
-  }catch(e){ err=e; }
-
-  if(items){
-    const pages=ghPick(items);
-    if(!pages.length){
-      el.innerHTML=`<p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">该目录里除了本页还没有别的 HTML 文件</p>
-        <p style="color:var(--text2);font-size:11px;text-align:center">来源：github.com/${esc(repo)} 根目录</p>`;
-      return;
-    }
-    el.innerHTML=ghCards(pages)+`<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
-    return;
-  }
-
-  if(cache && Array.isArray(cache.items) && cache.items.length){
-    const pages=ghPick(cache.items);
-    const when=new Date(cache.t).toLocaleString('zh-CN');
-    el.innerHTML=`<p style="color:var(--danger);font-size:12px;margin-bottom:12px">读取失败：${esc(err&&err.message||'')}　（下面显示 ${when} 的缓存）</p>`
-      + ghCards(pages)
-      + `<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
-    return;
-  }
-
-  ghFail(err&&err.message||'未知错误',repo);
-}
-
 /* ===== 文件管理（Supabase Storage rob2） ===== */
 const FILE_PASS='123123';
 let fileAuthed=false;
@@ -809,7 +679,146 @@ function fileIcon2(mime){if(!mime)return'📄';if(mime.startsWith('image/'))retu
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s){ return esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+/* ===== 上传新页面：上传 HTML 到 GitHub Pages 站点仓库根目录 ===== */
+const GH_TOKEN_KEY='rex_gh_token';
+let upAuthed=false;
+
+function siteRepo(){
+  const saved=(localStorage.getItem('rex_gh_repo')||'').trim();
+  if(saved) return saved;
+  const host=location.hostname||'';
+  if(!host || !host.endsWith('.github.io')) return 'remexsun/rob';
+  const owner=host.slice(0,-10);
+  let segs=location.pathname.split('/').filter(Boolean);
+  if(segs.length && /\.(html?|htm)$/i.test(segs[segs.length-1])) segs.pop();
+  const repo=segs.length?segs[0]:owner+'.github.io';
+  return owner+'/'+repo;
+}
+function siteBase(repo){
+  const owner=repo.split('/')[0], r=repo.split('/')[1]||'';
+  return r===owner+'.github.io' ? 'https://'+owner+'.github.io/' : 'https://'+owner+'.github.io/'+r+'/';
+}
+
+function renderUpload(){
+  const c=document.getElementById('content');
+  const repo=siteRepo(), base=siteBase(repo);
+  if(!upAuthed){
+    c.innerHTML='<h1>📤 上传新页面</h1><p class="sub">上传 HTML 页面需要管理员密码</p>'
+    +'<div class="card" style="max-width:360px"><div style="display:flex;flex-direction:column;gap:10px">'
+    +'<input type="password" id="up-pwd" placeholder="输入密码" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:9px 11px;font:inherit;font-size:14px;outline:none" onfocus="this.style.outline=\'1px solid var(--accent)\'" onblur="this.style.outline=\'none\'" onkeydown="if(event.key===\'Enter\')upLogin()">'
+    +'<div id="up-pwd-err" style="color:var(--danger);font-size:13px;min-height:16px"></div>'
+    +'<button class="btn" onclick="upLogin()" style="padding:9px">进入</button>'
+    +'</div></div>';
+    setTimeout(function(){var el=document.getElementById('up-pwd'); if(el) el.focus();},60);
+    return;
+  }
+  const hasTok=!!(localStorage.getItem(GH_TOKEN_KEY)||'').trim();
+  const inpStyle="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 11px;font:inherit;font-size:13px;outline:none";
+  c.innerHTML='<h1>📤 上传新页面</h1><p class="sub">上传 HTML 页面到 '+esc(repo)+' 根目录，上传后的网址是 '+esc(base)+'文件名.html</p>'
+  +'<div class="card">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+      +'<span style="font-size:12px;color:'+(hasTok?'var(--text2)':'var(--danger)')+'">'+(hasTok?'✅ 已保存 GitHub token':'⚠ 还没有 token，先粘贴一个')+'</span>'
+      +'<button onclick="upTokToggle()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0;text-decoration:underline">'+(hasTok?'更换 token':'填 token')+'</button>'
+    +'</div>'
+    +'<div id="up-tok-box" style="display:'+(hasTok?'none':'block')+';margin-bottom:14px">'
+      +'<input type="password" id="up-tok" placeholder="粘贴 GitHub token（ghp_… 或 github_pat_…）" style="width:100%;'+inpStyle+'">'
+      +'<button class="btn" onclick="upSaveTok()" style="margin-top:8px;padding:8px;width:100%;font-size:13px">保存到本机</button>'
+      +'<div style="color:var(--text2);font-size:11px;margin-top:6px;line-height:1.7">只存在这台设备的浏览器里，不会写进网页代码。该 token 需要 '+esc(repo)+' 的 Contents 写权限。</div>'
+    +'</div>'
+    +'<label id="up-drop" style="display:flex;flex-direction:column;align-items:center;gap:8px;border:2px dashed var(--border);border-radius:9px;padding:20px;cursor:pointer;color:var(--text2);font-size:13px;text-align:center" ondragover="event.preventDefault();this.style.borderColor=\'var(--accent)\'" ondragleave="this.style.borderColor=\'var(--border)\'" ondrop="upDrop(event)">'
+      +'<span style="font-size:28px">📄</span>'
+      +'<span id="up-fname">点击选择 .html 文件，或拖拽到这里</span>'
+      +'<input type="file" id="up-file" accept=".html,.htm,text/html" style="display:none" onchange="upPick(this)">'
+    +'</label>'
+    +'<input id="up-name" placeholder="文件名（默认用原文件名，可改，不用写 .html）" style="width:100%;margin-top:12px;'+inpStyle+'">'
+    +'<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="upUpload()" style="flex:1;padding:9px">开始上传</button></div>'
+    +'<div id="up-status" style="font-size:13px;min-height:18px;margin-top:10px;text-align:center;color:var(--text2)"></div>'
+    +'<div id="up-result"></div>'
+  +'</div>';
+  var drop=document.getElementById('up-drop');
+  if(drop) drop.addEventListener('click',function(e){ var fi=document.getElementById('up-file'); if(fi && e.target!==fi) fi.click(); });
+}
+
+function upLogin(){
+  if(document.getElementById('up-pwd') && document.getElementById('up-pwd').value===PASS){ upAuthed=true; renderUpload(); }
+  else{ var e=document.getElementById('up-pwd-err'); if(e) e.textContent='密码错误'; }
+}
+function upTokToggle(){
+  var b=document.getElementById('up-tok-box'); if(!b) return;
+  b.style.display = b.style.display==='none' ? 'block' : 'none';
+}
+function upSaveTok(){
+  var v=(document.getElementById('up-tok')?document.getElementById('up-tok').value:'').trim();
+  if(!v){ alert('先粘贴 token'); return; }
+  localStorage.setItem(GH_TOKEN_KEY,v); renderUpload();
+  var st=document.getElementById('up-status'); if(st){ st.textContent='token 已保存到这台设备'; st.style.color='var(--accent)'; }
+}
+function upDrop(e){ e.preventDefault(); var d=document.getElementById('up-drop'); if(d) d.style.borderColor='var(--border)'; upFiles(e.dataTransfer.files); }
+function upPick(el){ upFiles(el.files); }
+function upFiles(files){
+  var f=files && files[0]; if(!f) return;
+  var fn=document.getElementById('up-fname'); if(fn) fn.textContent=f.name+' · '+fmtSize(f.size);
+  var nm=document.getElementById('up-name'); if(nm && !nm.value) nm.value=f.name.replace(/\.html?$/i,'');
+}
+function upB64(bytes){
+  var s='', CH=0x8000;
+  for(var i=0;i<bytes.length;i+=CH) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
+  return btoa(s);
+}
+
+async function upUpload(){
+  var st=document.getElementById('up-status'), res=document.getElementById('up-result');
+  var say=function(m,col){ if(st){ st.textContent=m; st.style.color=col||'var(--text2)'; } };
+  if(res) res.innerHTML='';
+  var tok=(localStorage.getItem(GH_TOKEN_KEY)||'').trim();
+  if(!tok){ say('先粘贴并保存 GitHub token','var(--danger)'); return; }
+  var fi=document.getElementById('up-file');
+  var f=fi && fi.files && fi.files[0];
+  if(!f){ say('先选择一个 HTML 文件','var(--danger)'); return; }
+  var name=((document.getElementById('up-name')||{}).value||'').trim() || f.name;
+  name=name.replace(/\s+/g,'-').replace(/[^\p{L}\p{N}._-]/gu,'-');
+  if(!/\.html?$/i.test(name)) name+='.html';
+  var repo=siteRepo(), base=siteBase(repo);
+  var api='https://api.github.com/repos/'+repo+'/contents/'+encodeURIComponent(name);
+  var H={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  say('读取文件…');
+  var bytes=new Uint8Array(await f.arrayBuffer());
+  if(bytes.length>25*1024*1024){ say('文件太大（GitHub 接口单文件上限 25MB）','var(--danger)'); return; }
+  var content=upB64(bytes);
+  var sha=null;
+  try{
+    var g=await fetch(api+'?t='+Date.now(),{headers:H,cache:'no-store'});
+    if(g.status===200){ sha=(await g.json()).sha; }
+    else if(g.status===401){ say('token 无效或已过期','var(--danger)'); return; }
+    else if(g.status===403){ say('token 无权写这个仓库，或触发了接口限额','var(--danger)'); return; }
+    else if(g.status!==404){ say('检查是否已有同名文件失败：HTTP '+g.status,'var(--danger)'); return; }
+  }catch(e){ say('网络错误：'+e.message,'var(--danger)'); return; }
+  say(sha?'发现同名文件，覆盖中…':'上传中…');
+  var body={message:'upload '+name+' via rex site',content:content};
+  if(sha) body.sha=sha;
+  var r;
+  try{ r=await fetch(api,{method:'PUT',headers:Object.assign({},H,{'Content-Type':'application/json'}),body:JSON.stringify(body)}); }
+  catch(e){ say('网络错误：'+e.message,'var(--danger)'); return; }
+  if(r.ok||r.status===201){
+    var url=base+name;
+    say('上传成功，GitHub Pages 正在重建，约 1 分钟后就能打开','var(--accent)');
+    if(res) res.innerHTML='<div class="card" style="display:flex;align-items:center;gap:10px">'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</div>'
+      +'<div style="font-size:11px;color:var(--text2);word-break:break-all">'+esc(url)+'</div></div>'
+      +'<a href="'+escAttr(url)+'" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:5px;white-space:nowrap">打开</a></div>';
+    return;
+  }
+  var msg='HTTP '+r.status;
+  try{ var j=await r.json(); if(j && j.message) msg=j.message; }catch(e){}
+  if(r.status===401) msg='token 无效或已过期';
+  if(r.status===403) msg='token 没有 Contents 写权限';
+  if(r.status===422 && sha) msg='同名文件刚被改过，再点一次上传即可';
+  say('上传失败：'+msg,'var(--danger)');
+}
+
 renderNav(); renderContent();
 </script>
 </body>
 </html>
+
+
