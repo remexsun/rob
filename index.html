@@ -511,13 +511,28 @@ async function bmDelete(id){
   try{await bmRemove(id);bmRefresh();}catch(e){alert('删除失败：'+e.message);}
 }
 
-/* ===== 数据：根目录 HTML 页面索引（读 Supabase Storage rob2） ===== */
+/* ===== 数据：GitHub 仓库根目录（与本页同级）的 HTML 页面 ===== */
+function ghRepo(){
+  const manual=(localStorage.getItem('rex_gh_repo')||'').trim();
+  if(/^[\w.-]+\/[\w.-]+$/.test(manual)) return manual;
+  const host=location.hostname;
+  if(!/\.github\.io$/i.test(host)) return null;
+  const owner=host.split('.')[0];
+  const segs=location.pathname.split('/').filter(Boolean);
+  return owner+'/'+(segs.length>1?segs[0]:host);
+}
+function ghSaveRepo(){
+  const v=(document.getElementById('gh-repo')?.value||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');
+  if(!/^[\w.-]+\/[\w.-]+$/.test(v)){ alert('请填 owner/repo，例如 remexsun/my-pages'); return; }
+  localStorage.setItem('rex_gh_repo',v);
+  dataRefresh();
+}
 async function renderData(){
   const c=document.getElementById('content');
   c.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>
         <h1 style="margin-bottom:8px">📊 数据</h1>
-        <p class="sub" style="margin-bottom:0">根目录下的 HTML 页面，点击直接打开</p>
+        <p class="sub" style="margin-bottom:0">GitHub 上与本页同级的 HTML 页面，点击直接打开</p>
       </div>
       <button class="btn ghost" onclick="dataRefresh()" style="padding:7px 14px;font-size:13px;margin-top:2px">刷新</button>
     </div>
@@ -527,31 +542,46 @@ async function renderData(){
 }
 async function dataRefresh(){
   const el=document.getElementById('data-list'); if(!el)return;
-  let all;
-  try{
-    const r=await fetch(`${SB_URL}/storage/v1/object/list/${SB_BUCKET}`,{method:'POST',headers:{'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({prefix:'',limit:200,offset:0,sortBy:{column:'created_at',order:'desc'}})});
-    if(!r.ok) throw new Error(r.status);
-    all=await r.json();
-  }catch(e){
-    el.innerHTML=`<p style="color:var(--danger);font-size:14px">加载失败：${e.message}</p>`; return;
-  }
-  const html=(all||[]).filter(f=>/\.html?$/i.test(f.name||''));
-  if(!html.length){
-    el.innerHTML='<p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">根目录里还没有 HTML 文件<br><span style="font-size:12px">在「文件」栏目上传 .html 文件后，这里就能点开访问</span></p>';
+  const repo=ghRepo();
+  if(!repo){
+    el.innerHTML=`<div class="card" style="max-width:520px">
+      <h3>本地打开时读不到 GitHub 仓库</h3>
+      <p>部署到 GitHub Pages 后会自动识别仓库。想在本地预览，填一下仓库名即可：</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <input id="gh-repo" placeholder="owner/repo，例如 remexsun/my-pages" value="${escAttr(localStorage.getItem('rex_gh_repo')||'')}" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 11px;font:inherit;font-size:13px;outline:none">
+        <button class="btn" onclick="ghSaveRepo()" style="padding:8px 16px;font-size:13px">加载</button>
+      </div>
+    </div>`;
     return;
   }
-  el.innerHTML=html.map(f=>{
-    const disp=(f.name||'').replace(/^\d+_/,'');
-    const url=`${SB_URL}/storage/v1/object/public/${SB_BUCKET}/${encodeURIComponent(f.name)}`;
-    return `<a href="${escAttr(url)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;color:var(--text)">
+  let files;
+  try{
+    const r=await fetch(`https://api.github.com/repos/${repo}/contents`,{headers:{'Accept':'application/vnd.github+json'}});
+    const data=await r.json();
+    if(!r.ok) throw new Error((data&&data.message)||('HTTP '+r.status));
+    if(!Array.isArray(data)) throw new Error('返回格式异常');
+    files=data;
+  }catch(e){
+    el.innerHTML=`<p style="color:var(--danger);font-size:14px">读取 ${esc(repo)} 失败：${esc(e.message)}<br><span style="font-size:12px;color:var(--text2)">仓库需要是公开的，且读取的是根目录</span></p>`;
+    return;
+  }
+  const self=(location.pathname.split('/').pop()||'').toLowerCase();
+  const pages=files.filter(f=>f.type==='file' && /\.html?$/i.test(f.name) && f.name.toLowerCase()!=='index.html' && f.name.toLowerCase()!==self)
+                   .sort((a,b)=>a.name.localeCompare(b.name));
+  if(!pages.length){
+    el.innerHTML='<p style="color:var(--text2);font-size:14px;text-align:center;padding:24px 0">该目录里除了本页还没有别的 HTML 文件</p>';
+    return;
+  }
+  el.innerHTML=pages.map(f=>`
+    <a href="./${encodeURIComponent(f.name)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;color:var(--text)">
       <span style="font-size:24px">🌐</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(disp)}</div>
-        <div style="color:var(--text2);font-size:11px;margin-top:2px">${fmtSize(f.metadata&&f.metadata.size)}</div>
+        <div style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</div>
+        <div style="color:var(--text2);font-size:11px;margin-top:2px">${fmtSize(f.size)}</div>
       </div>
       <span style="color:var(--accent);font-size:13px;white-space:nowrap">打开 →</span>
-    </a>`;
-  }).join('');
+    </a>`).join('');
+  el.innerHTML += `<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:6px">来源：github.com/${esc(repo)} 根目录</p>`;
 }
 
 /* ===== 文件管理（Supabase Storage rob2） ===== */
