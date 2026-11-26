@@ -58,9 +58,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"PingFa
 .card h3{font-size:15px;font-weight:600;margin-bottom:8px}
 .card p{color:var(--text2);font-size:14px;line-height:1.7}
 
-/* 首页 WELCOME */
-.home-hero{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 64px)}
-.hero-word{margin:0;font-weight:900;letter-spacing:.06em;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:clamp(40px,8vw,140px);line-height:1.1}
+/* 首页：WELCOME + 倒计时 */
+.home-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3.2vh,36px);min-height:calc(100vh - 64px);padding:28px 16px}
+.hero-word{margin:0;font-weight:900;letter-spacing:.06em;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:clamp(32px,6.4vw,110px);line-height:1.05}
+.cd{--dh:clamp(46px,9.5vw,88px);--dhi:calc(var(--dh) - 2px);--dfs:clamp(1.55rem,6vw,3.2rem);--gap:clamp(4px,1.2vw,14px);display:flex;flex-direction:column;align-items:center;gap:10px}
+.cd-title{font-size:clamp(.72rem,1.9vw,.92rem);color:var(--text2);letter-spacing:.16em;text-align:center}
+.cd-timer{display:flex;align-items:center;justify-content:center;gap:var(--gap);flex-wrap:wrap;row-gap:8px}
+.cd-unit{display:flex;flex-direction:column;align-items:center}
+.cd-digits{display:flex;height:var(--dh);background:#0a0c10;border:1px solid var(--border);border-radius:10px;box-shadow:inset 0 0 18px #000,0 4px 12px rgba(0,0,0,.5);overflow:hidden;position:relative}
+.cd-digits::after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 8px 12px -8px #000,inset 0 -8px 12px -8px #000;border-radius:10px}
+.cd-cell{height:var(--dhi);width:calc(var(--dfs) * .62);overflow:hidden;display:flex;justify-content:center;align-items:flex-start}
+.cd-cell + .cd-cell{border-left:1px solid #1a1d28}
+.cd-scroller{display:flex;flex-direction:column;flex:0 0 auto;will-change:transform;transition:transform .4s cubic-bezier(.23,1,.32,1)}
+.cd-scroller span{flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:var(--dhi);width:calc(var(--dfs) * .62);font-size:var(--dfs);font-weight:700;font-variant-numeric:tabular-nums;color:#e8eaf5;text-shadow:0 0 12px rgba(140,150,255,.35)}
+.cd-sep{font-size:clamp(1rem,3vw,2rem);line-height:1;color:#545a78;user-select:none;align-self:flex-start;margin-top:calc(var(--dh) / 2);transform:translateY(-50%)}
+.cd-label{margin-top:6px;font-size:11px;letter-spacing:.2em;color:var(--text2)}
+.cd-meta{font-size:12px;color:var(--text2);letter-spacing:.06em;text-align:center}
+.cd-meta b{color:var(--text);font-weight:600}
+.cd-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 13px;font:inherit;font-size:12px;cursor:pointer;transition:color .15s,border-color .15s}
+.cd-btn:hover{color:var(--text);border-color:var(--text2)}
+.modal label{display:block;font-size:12px;color:var(--text2);margin:2px 0 6px;letter-spacing:.06em}
+.modal input[type=datetime-local]{color-scheme:dark}
 
 /* 管理员工具栏 */
 .admin-bar{display:none;padding:12px 36px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;gap:10px;flex-wrap:wrap}
@@ -94,7 +112,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"PingFa
 @media(max-width:768px){
   .topbar{display:flex}
   .layout{height:calc(100vh - 52px)}
-  .home-hero{min-height:calc(100vh - 52px - 40px)}
+  .home-hero{min-height:calc(100vh - 52px - 40px);gap:18px;padding:22px 12px}
   .sidebar{position:fixed;left:-240px;top:52px;height:calc(100vh - 52px);width:240px;z-index:60;transition:left .25s ease}
   .sidebar.open{left:0}
   .sidebar.collapsed{width:240px;min-width:240px}
@@ -168,7 +186,7 @@ const PASS = '123123';
 const STORAGE_KEY = 'rex_navs';
 
 const DEFAULT_NAVS = [
-  { id: 1, icon: '🏠', name: '首页', content: '<div class="home-hero"><div class="hero-word">WELCOME</div></div>' },
+  { id: 1, icon: '🏠', name: '首页', content: '__HOME__' },
   { id: 2, icon: '💬', name: '留言簿', content: '__GUESTBOOK__' },
   { id: 3, icon: '⭐', name: '收藏夹', content: '__BOOKMARKS__' },
   { id: 4, icon: '📁', name: '文件', content: '__FILES__' },
@@ -176,10 +194,10 @@ const DEFAULT_NAVS = [
 ];
 
 let navs = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || DEFAULT_NAVS;
-// 首页只保留 WELCOME，清掉旧版说明文案
+// 首页改成可渲染的倒计时页面（旧版纯 WELCOME 内容一并迁移）
 navs.forEach((n,i)=>{
-  if(typeof n.content==='string' && (n.content.includes('欢迎来到 Rex') || n.content.includes('点击左下角「管理员」按钮'))){
-    n.content = DEFAULT_NAVS[0].content; save();
+  if(typeof n.content==='string' && (n.content.includes('欢迎来到 Rex') || n.content.includes('点击左下角「管理员」按钮') || n.content.includes('home-hero'))){
+    n.content = '__HOME__'; save();
   }
 });
 // 上传栏目定名「上传新页面」；其余名叫「高中」的栏目改名为「英语世界」
@@ -196,16 +214,25 @@ if(navs.some(n=>n.id===5 && n.name==='数据')){
   navs = navs.filter(n=>!(n.id===5 && n.name==='数据'));
   save();
 }
-// 确保特殊栏目始终存在
+// 确保特殊栏目始终存在（若 id 被别的栏目占用，就新建一个 id，绝不覆盖你的栏目）
 const SPECIAL = {2:'__GUESTBOOK__', 3:'__BOOKMARKS__', 4:'__FILES__', 5:'__UPLOAD__'};
+function nextId(){ return Math.max(0,...navs.map(n=>+n.id||0))+1; }
 Object.entries(SPECIAL).forEach(([id,marker])=>{
   id=+id;
   if(!navs.find(n=>n.content===marker)){
-    const idx=navs.findIndex(n=>n.id===id);
     const def=DEFAULT_NAVS.find(n=>n.id===id);
-    if(def){ if(idx>=0) navs[idx]=def; else navs.splice(id-1,0,def); save(); }
+    if(!def) return;
+    const idx=navs.findIndex(n=>n.id===id);
+    if(idx>=0 && (navs[idx].name===def.name || navs[idx].content===def.content)){ navs[idx]=def; }
+    else{ navs.push(Object.assign({},def,{id:nextId()})); }
+    save();
   }
 });
+// 保证「英语世界」栏目一定存在（老数据被覆盖或清空时自动补回）
+if(!navs.find(n=>n.name==='英语世界')){
+  navs.push({ id: nextId(), icon:'📚', name:'英语世界', content:'<p style="color:var(--text2)">这里放英语学习内容。管理员模式下可编辑。</p>' });
+  save();
+}
 let current = navs[0]?.id;
 let isAdmin = false;
 
@@ -225,7 +252,8 @@ function renderNav(){
 function renderContent(){
   const n = navs.find(x=>x.id===current);
   if(!n){ document.getElementById('content').innerHTML = '<h1>请选择栏目</h1>'; return; }
-  if(n.content === '__GUESTBOOK__'){ renderGuestbook(); }
+  if(n.content === '__HOME__'){ renderHome(); }
+  else if(n.content === '__GUESTBOOK__'){ renderGuestbook(); }
   else if(n.content === '__BOOKMARKS__'){ renderBookmarks(); }
   else if(n.content === '__FILES__'){ renderFiles(); }
   else if(n.content === '__UPLOAD__'){ renderUpload(); }
@@ -816,9 +844,179 @@ async function upUpload(){
   say('上传失败：'+msg,'var(--danger)');
 }
 
+/* ===== 首页：WELCOME + 倒计时（管理员可改时间） ===== */
+const CD_KEY='rex_countdown';
+let cdCfg=null, cdScrollers={}, cdLast={}, cdTimerId=null, cdRemoteChecked=false;
+
+function cdDefault(){ return { title:'距 2027 西安高中寒假', target:'2027-01-29T00:00' }; }
+function cdLoadLocal(){
+  try{
+    const v=JSON.parse(localStorage.getItem(CD_KEY)||'null');
+    if(v && v.target) return { title: v.title || cdDefault().title, target: v.target };
+  }catch(e){}
+  return cdDefault();
+}
+function cdPretty(s){ return String(s||'').replace('T',' ').slice(0,16); }
+
+async function cdRemoteLoad(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/site_settings?key=eq.countdown&select=value`,{headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY},cache:'no-store'});
+    if(!r.ok) return null;
+    const a=await r.json();
+    if(a && a[0] && a[0].value){ const v=JSON.parse(a[0].value); if(v && v.target) return v; }
+  }catch(e){}
+  return null;
+}
+async function cdRemoteSave(cfg){
+  try{
+    await fetch(`${SB_URL}/rest/v1/site_settings`,{method:'POST',headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify([{key:'countdown',value:JSON.stringify(cfg)}])});
+  }catch(e){}
+}
+
+function renderHome(){
+  const c=document.getElementById('content');
+  if(!cdCfg) cdCfg=cdLoadLocal();
+  c.innerHTML='<div class="home-hero">'
+    +'<div class="hero-word">WELCOME</div>'
+    +'<div class="cd">'
+      +'<div class="cd-title" id="cdTitle">'+esc(cdCfg.title)+'</div>'
+      +'<div class="cd-timer" id="cdTimer"></div>'
+      +'<div class="cd-meta" id="cdMeta"></div>'
+      +'<div><button class="cd-btn" onclick="cdAdminOpen()">⚙ 管理</button></div>'
+    +'</div></div>';
+  cdBuild();
+  cdStart();
+  if(!cdRemoteChecked){
+    cdRemoteChecked=true;
+    cdRemoteLoad().then(function(rc){
+      if(rc && JSON.stringify(rc)!==JSON.stringify(cdCfg)){
+        cdCfg=rc; localStorage.setItem(CD_KEY,JSON.stringify(cdCfg));
+        if(document.getElementById('cdTimer')) renderHome();
+      }
+    });
+  }
+}
+
+function cdUnits(){
+  return [{key:'days',label:'天',digits:3},{key:'hours',label:'时',digits:2},{key:'minutes',label:'分',digits:2},{key:'seconds',label:'秒',digits:2}];
+}
+
+function cdBuild(){
+  const box=document.getElementById('cdTimer'); if(!box) return;
+  box.innerHTML=''; cdScrollers={}; cdLast={};
+  cdUnits().forEach(function(u){
+    const wrap=document.createElement('div'); wrap.className='cd-unit';
+    const digits=document.createElement('div'); digits.className='cd-digits';
+    cdScrollers[u.key]=[]; cdLast[u.key]=[];
+    for(let i=0;i<u.digits;i++){
+      const cell=document.createElement('div'); cell.className='cd-cell';
+      const sc=document.createElement('div'); sc.className='cd-scroller';
+      sc.style.transition='none';
+      for(let d=0;d<=9;d++){ const sp=document.createElement('span'); sp.textContent=d; sc.appendChild(sp); }
+      cell.appendChild(sc); digits.appendChild(cell);
+      cdScrollers[u.key].push(sc); cdLast[u.key].push(null);
+    }
+    const lb=document.createElement('div'); lb.className='cd-label'; lb.textContent=u.label;
+    wrap.appendChild(digits); wrap.appendChild(lb); box.appendChild(wrap);
+    if(u.key!=='seconds'){ const sep=document.createElement('div'); sep.className='cd-sep'; sep.textContent=':'; box.appendChild(sep); }
+  });
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    Object.keys(cdScrollers).forEach(function(k){ cdScrollers[k].forEach(function(s){ s.style.transition=''; }); });
+  }); });
+}
+
+function cdSetUnit(key, value){
+  const unit=cdUnits().filter(function(u){ return u.key===key; })[0]; if(!unit) return;
+  const digits=unit.digits;
+  const str=String(Math.min(Math.max(value,0), Math.pow(10,digits)-1)).padStart(digits,'0');
+  for(let i=0;i<digits;i++){
+    const digit=parseInt(str.charAt(i),10);
+    if(cdLast[key][i]===digit) continue;
+    cdLast[key][i]=digit;
+    const sc=cdScrollers[key][i]; if(!sc) continue;
+    sc.style.transform='translateY(calc(var(--dhi) * '+(-digit)+'))';
+  }
+}
+
+function cdTick(){
+  if(!cdCfg) cdCfg=cdLoadLocal();
+  const meta=document.getElementById('cdMeta');
+  const target=new Date(cdCfg.target).getTime();
+  if(isNaN(target)){ if(meta) meta.textContent='目标时间无效'; return; }
+  let diff=target-Date.now();
+  if(diff<=0){
+    cdSetUnit('days',0); cdSetUnit('hours',0); cdSetUnit('minutes',0); cdSetUnit('seconds',0);
+    if(meta) meta.innerHTML='<b>目标时间已到</b>';
+    return;
+  }
+  const days=Math.floor(diff/86400000); diff-=days*86400000;
+  const hours=Math.floor(diff/3600000); diff-=hours*3600000;
+  const minutes=Math.floor(diff/60000); diff-=minutes*60000;
+  const seconds=Math.floor(diff/1000);
+  cdSetUnit('days',days); cdSetUnit('hours',hours); cdSetUnit('minutes',minutes); cdSetUnit('seconds',seconds);
+  if(meta) meta.innerHTML='目标 <b>'+esc(cdPretty(cdCfg.target))+'</b>';
+}
+
+function cdStart(){
+  if(cdTimerId){ clearInterval(cdTimerId); cdTimerId=null; }
+  cdTick();
+  cdTimerId=setInterval(function(){ if(document.getElementById('cdTimer')) cdTick(); }, 250);
+}
+
+function cdAdminOpen(){
+  const old=document.getElementById('cdModal'); if(old) old.remove();
+  const el=document.createElement('div'); el.className='overlay show'; el.id='cdModal';
+  el.addEventListener('click',function(e){ if(e.target===el) cdClose(); });
+  el.innerHTML='<div class="modal">'
+    +'<h2>管理倒计时</h2>'
+    +'<div id="cdStep1">'
+      +'<input type="password" id="cdPwd" placeholder="输入密码" onkeydown="if(event.key===\'Enter\')cdCheckPwd()">'
+      +'<div class="modal-err" id="cdErr"></div>'
+      +'<div class="modal-btns"><button class="btn ghost" onclick="cdClose()">取消</button><button class="btn" onclick="cdCheckPwd()">确定</button></div>'
+    +'</div>'
+    +'<div id="cdStep2" style="display:none">'
+      +'<label>标题文字</label>'
+      +'<input id="cdFTitle" placeholder="例如：距 2027 西安高中寒假">'
+      +'<label>目标时间</label>'
+      +'<input type="datetime-local" id="cdFTime">'
+      +'<div class="modal-err" id="cdErr2"></div>'
+      +'<div class="modal-btns"><button class="btn ghost" onclick="cdClose()">取消</button><button class="btn" onclick="cdSave()">保存</button></div>'
+    +'</div></div>';
+  document.body.appendChild(el);
+  setTimeout(function(){ const p=document.getElementById('cdPwd'); if(p) p.focus(); },50);
+}
+
+function cdClose(){ const el=document.getElementById('cdModal'); if(el) el.remove(); }
+
+function cdCheckPwd(){
+  const v=(document.getElementById('cdPwd')||{}).value||'';
+  if(v!==PASS){ const e=document.getElementById('cdErr'); if(e) e.textContent='密码错误'; return; }
+  const s1=document.getElementById('cdStep1'), s2=document.getElementById('cdStep2');
+  if(s1) s1.style.display='none';
+  if(s2) s2.style.display='block';
+  const cur=cdCfg||cdLoadLocal();
+  const t=document.getElementById('cdFTitle'); if(t) t.value=cur.title;
+  const d=document.getElementById('cdFTime'); if(d) d.value=String(cur.target).slice(0,16);
+  setTimeout(function(){ if(d) d.focus(); },50);
+}
+
+function cdSave(){
+  const title=((document.getElementById('cdFTitle')||{}).value||'').trim();
+  const time=((document.getElementById('cdFTime')||{}).value||'').trim();
+  const err=document.getElementById('cdErr2');
+  if(!time){ if(err) err.textContent='请选择目标时间'; return; }
+  if(isNaN(new Date(time).getTime())){ if(err) err.textContent='时间格式不正确'; return; }
+  cdCfg={ title: title || cdDefault().title, target: time };
+  localStorage.setItem(CD_KEY, JSON.stringify(cdCfg));
+  cdRemoteSave(cdCfg);
+  cdClose();
+  renderHome();
+}
+
 renderNav(); renderContent();
 </script>
 </body>
 </html>
+
 
 
