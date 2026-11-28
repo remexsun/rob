@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MATRIX · 代码雨</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ===== 画布：代码雨 + 循环放大 ===== */
+  #matrix {
+    position: fixed;
+    inset: 0;
+    display: block;
+    z-index: 1;
+    transform-origin: center center;
+    will-change: transform;
+    animation: zoomPulse 6s cubic-bezier(.45, 0, .55, 1) infinite;
+  }
+
+  /* 循环放大 / 呼吸缩放 */
+  @keyframes zoomPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.075); }
+    100% { transform: scale(1); }
+  }
+
+  /* ===== CRT 扫描线 ===== */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: .55;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, .25) 0px,
+      rgba(0, 0, 0, .25) 1px,
+      rgba(0, 0, 0, 0)   1px,
+      rgba(0, 0, 0, 0)   3px
+    );
+  }
+
+  /* ===== 暗角 + 中心绿色辉光 ===== */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    background:
+      radial-gradient(ellipse at center, rgba(0, 255, 90, .07) 0%, rgba(0, 0, 0, 0) 45%),
+      radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, .92) 100%);
+  }
+
+  /* ===== 轻微闪烁，模拟老显示器 ===== */
+  .flicker {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 7;
+    background: #00ff5a;
+    opacity: .02;
+    animation: flick 3.2s steps(1) infinite;
+  }
+  @keyframes flick {
+    0%, 100% { opacity: .015; }
+    12%      { opacity: .045; }
+    13%      { opacity: .01; }
+    47%      { opacity: .035; }
+    48%      { opacity: .012; }
+    74%      { opacity: .05; }
+    75%      { opacity: .008; }
+  }
+
+  /* ===== 底部按钮 ===== */
+  .btn-wrap {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
+
+  #fsBtn {
+    display: block;
+    padding: 13px 30px;
+    font: 700 15px/1 "Courier New", "MS Gothic", monospace;
+    letter-spacing: 3px;
+    white-space: nowrap;
+    color: #b6ffcb;
+    background: rgba(0, 28, 10, .55);
+    border: 1px solid rgba(0, 255, 90, .45);
+    border-radius: 6px;
+    cursor: pointer;
+    text-shadow: 0 0 10px rgba(0, 255, 90, .85), 0 0 22px rgba(0, 255, 90, .4);
+    box-shadow: 0 0 18px rgba(0, 255, 90, .18), inset 0 0 18px rgba(0, 255, 90, .08);
+    transition: color .25s, background .25s, border-color .25s,
+                box-shadow .25s, transform .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #fsBtn:hover {
+    color: #e6ffee;
+    background: rgba(0, 60, 22, .7);
+    border-color: rgba(120, 255, 160, .9);
+    box-shadow: 0 0 26px rgba(0, 255, 90, .45), inset 0 0 26px rgba(0, 255, 90, .18);
+  }
+
+  #fsBtn:active { transform: scale(.95); }
+
+  #fsBtn:focus-visible {
+    outline: 2px solid rgba(120, 255, 160, .9);
+    outline-offset: 3px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div class="flicker"></div>
+
+<div class="btn-wrap">
+  <button id="fsBtn" type="button">全屏模式 ENTER FULLSCREEN</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('matrix');
+  var ctx = canvas.getContext('2d', { alpha: false });
+  var fsBtn = document.getElementById('fsBtn');
+
+  /* ---------- 字符集：半角片假名 + 数字 + 字母 + 符号 ---------- */
+  var CHARS =
+    'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ' +
+    '0123456789' +
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+    ':;.=*+-<>|[]{}()/\\!?$#@%&';
+
+  var FONT_STACK =
+    '"MS Gothic","Osaka-Mono","Noto Sans Mono CJK JP",' +
+    '"Hiragino Kaku Gothic ProN","Courier New",monospace';
+
+  var W = 0, H = 0, cellW = 12, cellH = 17, cols = 0;
+  var drops = [], speeds = [];
+  var rafId = null;
+  var prevTime = performance.now();
+
+  /* ---------- 初始化 / 尺寸变化 ---------- */
+  function setup() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    W = window.innerWidth  || document.documentElement.clientWidth;
+    H = window.innerHeight || document.documentElement.clientHeight;
+
+    canvas.width  = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    // 改尺寸会重置上下文状态
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textBaseline = 'top';
+
+    cellH = W < 640 ? 14 : 17;
+    ctx.font = '700 ' + cellH + 'px ' + FONT_STACK;
+    cellW = Math.max(9, Math.ceil(ctx.measureText('0').width));
+
+    cols = Math.ceil(W / cellW) + 1;
+
+    drops = new Array(cols);
+    speeds = new Array(cols);
+    for (var i = 0; i < cols; i++) {
+      drops[i]  = Math.random() * (-H / cellH);  // 从上方随机高度起步
+      speeds[i] = 0.35 + Math.random() * 1.15;   // 每帧下落行数
+    }
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* ---------- 主循环 ---------- */
+  function frame(now) {
+    rafId = requestAnimationFrame(frame);
+
+    var dt = now - prevTime;
+    prevTime = now;
+    if (dt > 120) dt = 120;        // 切回标签页时不跳帧
+    var step = dt / 16.667;        // 以 60fps 为基准的时间步长
+
+    // 半透明黑色覆盖 —— 制造拖尾
+    ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.5, 0.085 * step) + ')';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.font = '700 ' + cellH + 'px ' + FONT_STACK;
+
+    for (var i = 0; i < cols; i++) {
+      var x = i * cellW;
+      var row = Math.floor(drops[i]);
+      var y = row * cellH;
+
+      if (y > -cellH && y < H) {
+        var ch = CHARS[(Math.random() * CHARS.length) | 0];
+
+        // 偶尔闪出纯白的“头部”字符
+        if (Math.random() < 0.05) {
+          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        } else {
+          ctx.fillStyle = 'rgba(175,255,195,0.92)';
+        }
+        ctx.fillText(ch, x, y);
+      }
+
+      drops[i] += speeds[i] * step;
+
+      // 落到底部后随机重置回顶部
+      if (y > H && Math.random() > 0.965) {
+        drops[i]  = -Math.random() * 25;
+        speeds[i] = 0.35 + Math.random() * 1.15;
+      }
+    }
+  }
+
+  function start() {
+    if (rafId !== null) return;
+    prevTime = performance.now();
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  /* ---------- 全屏控制 ---------- */
+  function getFsElement() {
+    return document.fullscreenElement ||
+           document.webkitFullscreenElement ||
+           document.msFullscreenElement ||
+           null;
+  }
+
+  function isFullscreen() { return !!getFsElement(); }
+
+  function noop() {}
+
+  function toggleFullscreen() {
+    try {
+      if (!isFullscreen()) {
+        var el = document.documentElement;
+        if (el.requestFullscreen) {
+          el.requestFullscreen().catch(function (err) {
+            console.warn('全屏请求被拒绝:', err);
+          });
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        } else {
+          fsBtn.textContent = '当前浏览器不支持全屏';
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(noop);
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('全屏切换失败:', err);
+    }
+  }
+
+  function updateBtn() {
+    fsBtn.textContent = isFullscreen()
+      ? '退出全屏 EXIT FULLSCREEN'
+      : '全屏模式 ENTER FULLSCREEN';
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  fsBtn.addEventListener('click', function () {
+    toggleFullscreen();
+  });
+
+  document.addEventListener('fullscreenchange', updateBtn);
+  document.addEventListener('webkitfullscreenchange', updateBtn);
+  document.addEventListener('msfullscreenchange', updateBtn);
+
+  // 尺寸变化（防抖）
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(setup, 150);
+  });
+
+  // 页面隐藏时暂停，省 CPU
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) stop();
+    else start();
+  });
+
+  /* ---------- 启动 ---------- */
+  setup();
+  start();
+  updateBtn();
+})();
+</script>
+</body>
+</html>
